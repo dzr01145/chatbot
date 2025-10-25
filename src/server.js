@@ -4,7 +4,10 @@ const path = require('path');
 const fs = require('fs').promises;
 require('dotenv').config();
 
+// AI SDKs
 const Anthropic = require('@anthropic-ai/sdk');
+const OpenAI = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,6 +16,9 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
+
+// AI Provider selection (google, openai, or anthropic)
+const AI_PROVIDER = process.env.AI_PROVIDER || 'google';
 
 // システムプロンプト（ユーザー提供）
 const SYSTEM_PROMPT = `あなたは顧客サポート向けに設計された、AI 搭載のウェブベース・チャットボットです。必要に応じて追加の知識モジュールを埋め込める柔軟なアーキテクチャを備えています。コア機能は、更新可能な内部ナレッジベース（ナレッジ）を活用し、労働安全衛生に関する典型的な質問に正確かつ明確に答えることです。あなたはこの領域の質問を認識して対応し、最新の埋め込み知識を用いながら、親しみやすくプロフェッショナルなトーンを保たねばなりません。
@@ -41,12 +47,26 @@ const SYSTEM_PROMPT = `あなたは顧客サポート向けに設計された、
 // Knowledge base path
 const KNOWLEDGE_PATH = path.join(__dirname, '../data/knowledge.json');
 
-// Initialize Anthropic client
-let anthropic;
-if (process.env.ANTHROPIC_API_KEY) {
-  anthropic = new Anthropic({
+// Initialize AI clients based on provider
+let aiClient;
+let aiConfigured = false;
+
+if (AI_PROVIDER === 'google' && process.env.GOOGLE_API_KEY) {
+  aiClient = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+  aiConfigured = true;
+  console.log('✓ Google AI Studio (Gemini) を使用します');
+} else if (AI_PROVIDER === 'openai' && process.env.OPENAI_API_KEY) {
+  aiClient = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+  aiConfigured = true;
+  console.log('✓ OpenAI (ChatGPT) を使用します');
+} else if (AI_PROVIDER === 'anthropic' && process.env.ANTHROPIC_API_KEY) {
+  aiClient = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
   });
+  aiConfigured = true;
+  console.log('✓ Anthropic (Claude) を使用します');
 }
 
 // Load knowledge base
@@ -114,6 +134,65 @@ function formatKnowledgeContext(knowledgeItems) {
   return context;
 }
 
+// Call AI API based on provider
+async function callAI(message, conversationHistory, knowledgeContext) {
+  const userMessage = message + knowledgeContext;
+
+  if (AI_PROVIDER === 'google') {
+    // Google Gemini API
+    const model = aiClient.getGenerativeModel({
+      model: 'gemini-1.5-flash',
+      systemInstruction: SYSTEM_PROMPT
+    });
+
+    // Convert conversation history to Gemini format
+    const history = conversationHistory.map(msg => ({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: msg.content }]
+    }));
+
+    const chat = model.startChat({ history });
+    const result = await chat.sendMessage(userMessage);
+    const response = await result.response;
+    return response.text();
+
+  } else if (AI_PROVIDER === 'openai') {
+    // OpenAI ChatGPT API
+    const messages = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      ...conversationHistory,
+      { role: 'user', content: userMessage }
+    ];
+
+    const response = await aiClient.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: messages,
+      max_tokens: 1024,
+      temperature: 0.7
+    });
+
+    return response.choices[0].message.content;
+
+  } else if (AI_PROVIDER === 'anthropic') {
+    // Anthropic Claude API
+    const messages = [
+      ...conversationHistory,
+      { role: 'user', content: userMessage }
+    ];
+
+    const response = await aiClient.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1024,
+      system: SYSTEM_PROMPT,
+      messages: messages
+    });
+
+    return response.content[0].text;
+  }
+
+  throw new Error('無効なAIプロバイダーが設定されています');
+}
+
 // Chat endpoint
 app.post('/api/chat', async (req, res) => {
   try {
@@ -123,9 +202,15 @@ app.post('/api/chat', async (req, res) => {
       return res.status(400).json({ error: 'メッセージが必要です' });
     }
 
-    if (!anthropic) {
+    if (!aiConfigured) {
+      const providerNames = {
+        google: 'GOOGLE_API_KEY',
+        openai: 'OPENAI_API_KEY',
+        anthropic: 'ANTHROPIC_API_KEY'
+      };
       return res.status(500).json({
-        error: 'API キーが設定されていません。.env ファイルに ANTHROPIC_API_KEY を設定してください。'
+        error: `APIキーが設定されていません。.envファイルに${providerNames[AI_PROVIDER]}を設定してください。`,
+        provider: AI_PROVIDER
       });
     }
 
@@ -134,29 +219,14 @@ app.post('/api/chat', async (req, res) => {
     const relevantKnowledge = searchKnowledge(knowledge, message);
     const knowledgeContext = formatKnowledgeContext(relevantKnowledge);
 
-    // Build messages for Claude
-    const messages = [
-      ...conversationHistory,
-      {
-        role: 'user',
-        content: message + knowledgeContext
-      }
-    ];
-
-    // Call Claude API
-    const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: messages
-    });
-
-    const reply = response.content[0].text;
+    // Call AI API
+    const reply = await callAI(message, conversationHistory, knowledgeContext);
 
     res.json({
       reply,
       knowledgeUsed: relevantKnowledge.length > 0,
-      knowledgeCount: relevantKnowledge.length
+      knowledgeCount: relevantKnowledge.length,
+      provider: AI_PROVIDER
     });
 
   } catch (error) {
@@ -223,7 +293,8 @@ app.post('/api/knowledge', async (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    apiConfigured: !!anthropic,
+    provider: AI_PROVIDER,
+    apiConfigured: aiConfigured,
     timestamp: new Date().toISOString()
   });
 });
@@ -232,5 +303,6 @@ app.get('/api/health', (req, res) => {
 app.listen(PORT, () => {
   console.log(`\n労働安全衛生チャットボットサーバーが起動しました`);
   console.log(`サーバー: http://localhost:${PORT}`);
-  console.log(`API設定: ${anthropic ? '✓ 完了' : '✗ 未設定 (.envファイルにAPIキーを設定してください)'}\n`);
+  console.log(`AIプロバイダー: ${AI_PROVIDER}`);
+  console.log(`API設定: ${aiConfigured ? '✓ 完了' : '✗ 未設定 (.envファイルにAPIキーを設定してください)'}\n`);
 });

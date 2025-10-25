@@ -4,11 +4,12 @@ AI搭載のウェブベース顧客サポートチャットボット。労働安
 
 ## 主な機能
 
-- **AI チャット機能**: Anthropic Claude APIを使用した自然言語での対話
+- **AI チャット機能**: 3つのAIプロバイダーに対応（Google Gemini、OpenAI ChatGPT、Anthropic Claude）
 - **ナレッジベース統合**: 労働安全衛生に関する知識を検索・参照
 - **ナレッジ管理**: ウェブインターフェースから新しい知識を追加可能
 - **カテゴリー分類**: 法律・規則、労働災害、健康管理、保護具など6つのカテゴリー
 - **会話履歴**: コンテキストを保持した連続した対話
+- **柔軟なAI選択**: 環境変数で簡単にAIプロバイダーを切り替え可能
 
 ## システムプロンプト
 
@@ -64,23 +65,55 @@ npm install
 
 ### 2. 環境変数の設定
 
-`.env.example` をコピーして `.env` ファイルを作成し、Anthropic API キーを設定します。
+`.env.example` をコピーして `.env` ファイルを作成します。
 
 ```bash
 cp .env.example .env
 ```
 
-`.env` ファイルを編集：
+`.env` ファイルを編集して、使用したいAIプロバイダーを選択し、対応するAPIキーを設定します：
+
+#### オプション1: Google AI Studio (Gemini) - おすすめ
 
 ```env
-ANTHROPIC_API_KEY=your_actual_api_key_here
+AI_PROVIDER=google
+GOOGLE_API_KEY=your_google_api_key_here
+PORT=3000
+```
+
+**Google API キーの取得方法:**
+1. https://aistudio.google.com/app/apikey にアクセス
+2. Googleアカウントでログイン
+3. 「Create API Key」をクリック
+4. 無料枠が大きく、高性能なGemini 1.5 Flashが使えます
+
+#### オプション2: OpenAI (ChatGPT)
+
+```env
+AI_PROVIDER=openai
+OPENAI_API_KEY=your_openai_api_key_here
+PORT=3000
+```
+
+**OpenAI API キーの取得方法:**
+1. https://platform.openai.com/api-keys にアクセス
+2. アカウントを作成またはログイン
+3. 「Create new secret key」をクリック
+4. GPT-4o-miniを使用（コスト効率が良い）
+
+#### オプション3: Anthropic (Claude)
+
+```env
+AI_PROVIDER=anthropic
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
 PORT=3000
 ```
 
 **Anthropic API キーの取得方法:**
 1. https://console.anthropic.com/ にアクセス
 2. アカウントを作成またはログイン
-3. API Keys セクションから新しいキーを生成
+3. API Keysセクションから新しいキーを生成
+4. Claude 3.5 Sonnetを使用（高品質な応答）
 
 ### 3. サーバーの起動
 
@@ -186,7 +219,10 @@ http://localhost:3000
 
 - **フロントエンド**: HTML5, CSS3, Vanilla JavaScript
 - **バックエンド**: Node.js, Express.js
-- **AI API**: Anthropic Claude (Claude 3.5 Sonnet)
+- **AI API**:
+  - Google AI Studio (Gemini 1.5 Flash) - デフォルト
+  - OpenAI (GPT-4o-mini)
+  - Anthropic (Claude 3.5 Sonnet)
 - **データ保存**: JSON ファイル（将来的にはデータベース対応可能）
 
 ## カスタマイズ
