@@ -185,9 +185,50 @@ body {
     margin-bottom: 0;
 }
 
-.message-content ul {
+/* チャット内のリンク */
+.message-content .chat-link {
+    color: #667eea;
+    text-decoration: underline;
+    word-break: break-all;
+    transition: color 0.2s;
+}
+
+.message-content .chat-link:hover {
+    color: #5568d3;
+}
+
+.user-message .message-content .chat-link {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+.user-message .message-content .chat-link:hover {
+    opacity: 0.9;
+}
+
+/* チャット内の箇条書き */
+.message-content ul.chat-list {
     margin: 0.5rem 0;
     padding-left: 1.2rem;
+    line-height: 1.6;
+}
+
+.message-content ul.chat-list li {
+    margin-bottom: 0.3rem;
+}
+
+.message-content ul.chat-list li:last-child {
+    margin-bottom: 0;
+}
+
+/* チャット内の強調（太字） */
+.message-content strong {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.user-message .message-content strong {
+    color: #ffffff;
 }
 
 .knowledge-badge {

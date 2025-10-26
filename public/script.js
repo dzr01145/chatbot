@@ -169,28 +169,50 @@ function displayMessage(text, sender, knowledgeUsed = false) {
     scrollToBottom();
 }
 
-// Format message (convert newlines to paragraphs, handle lists)
+// Format message (convert newlines to paragraphs, handle lists, URLs, and markdown)
 function formatMessage(text) {
+    // まずURLをハイパーリンクに変換（プレースホルダーに置き換え）
+    const urlPattern = /(https?:\/\/[^\s]+)/g;
+    const urls = [];
+    let processedText = text.replace(urlPattern, (match) => {
+        urls.push(match);
+        return `__URL_${urls.length - 1}__`;
+    });
+
+    // マークダウンの太字を変換（**text** → <strong>text</strong>）
+    processedText = processedText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
     // Split by double newlines for paragraphs
-    let formatted = text
+    let formatted = processedText
         .split('\n\n')
         .map(para => {
-            // Check if it's a list (starts with • or -)
-            if (para.includes('\n•') || para.includes('\n-')) {
+            // Check if it's a list (starts with • or - or *)
+            if (para.includes('\n•') || para.includes('\n-') || para.includes('\n*')) {
                 const lines = para.split('\n');
                 const listItems = lines
-                    .filter(line => line.trim().startsWith('•') || line.trim().startsWith('-'))
+                    .filter(line => {
+                        const trimmed = line.trim();
+                        return trimmed.startsWith('•') ||
+                               trimmed.startsWith('-') ||
+                               trimmed.startsWith('*');
+                    })
                     .map(line => {
-                        const content = line.replace(/^[•\-]\s*/, '').trim();
+                        const content = line.replace(/^[•\-\*]\s*/, '').trim();
                         return `<li>${content}</li>`;
                     })
                     .join('');
-                return `<ul>${listItems}</ul>`;
+                return `<ul class="chat-list">${listItems}</ul>`;
             } else {
                 return `<p>${para.replace(/\n/g, '<br>')}</p>`;
             }
         })
         .join('');
+
+    // URLプレースホルダーを実際のリンクに戻す
+    urls.forEach((url, index) => {
+        const linkHtml = `<a href="${url}" target="_blank" rel="noopener noreferrer" class="chat-link">${url}</a>`;
+        formatted = formatted.replace(`__URL_${index}__`, linkHtml);
+    });
 
     return formatted;
 }
