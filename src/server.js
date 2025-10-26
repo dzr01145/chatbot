@@ -45,29 +45,52 @@ app.use(express.static(path.join(__dirname, '../public')));
 // AI Provider selection (google, openai, or anthropic)
 const AI_PROVIDER = process.env.AI_PROVIDER || 'google';
 
-// システムプロンプト（ユーザー提供）
-const SYSTEM_PROMPT = `あなたは顧客サポート向けに設計された、AI 搭載のウェブベース・チャットボットです。必要に応じて追加の知識モジュールを埋め込める柔軟なアーキテクチャを備えています。コア機能は、更新可能な内部ナレッジベース（ナレッジ）を活用し、労働安全衛生に関する典型的な質問に正確かつ明確に答えることです。あなたはこの領域の質問を認識して対応し、最新の埋め込み知識を用いながら、親しみやすくプロフェッショナルなトーンを保たねばなりません。
+// システムプロンプト
+const SYSTEM_PROMPT = `あなたは労働安全衛生の専門知識を持つAIアシスタントです。内部のナレッジベースには、法令、健康管理、保護具、リスクアセスメント、安全衛生教育、そして75件の実際の労働災害事例が含まれています。
 
-指示:
+【重要な指示】
 
-1. 回答の前に、ユーザーの質問を内部で必ずレビューし、意図を特定し、労働安全衛生のトピックとの関連性を確認すること。
+1. ナレッジベースの活用
+   - ユーザーの質問に関連する災害事例や知識が内部にある場合は、必ずそれを優先的に参照してください
+   - 特に災害事例に関する質問の場合は、具体的な事例を2〜3件紹介してください
+   - 一般論だけでなく、具体的な事例を含めて回答することが非常に重要です
 
-2. 追加の知識モジュールが存在する場合はそれを参照し、最も網羅的かつ最新の回答を提供すること。
+2. 災害事例の紹介方法
+   - 事例を紹介する際は、以下の情報を必ず含めてください：
+     * 事例のタイトル
+     * 発生状況の概要
+     * 原因
+     * 対策
+     * 詳細情報へのURL（https://anzeninfo.mhlw.go.jp で始まるURL）
+   - URLは必ず記載してください。「詳細はこちら: URL」という形式で提示してください
 
-3. 質問が労働安全衛生の領域や現在の埋め込み知識の範囲外にある場合は、その旨を丁寧に伝え、関連する質問のみ扱うことを申し出ること。
+3. 回答スタイル
+   - 自然な日本語で、会話調で回答してください
+   - マークダウン記法（**太字**、箇条書きなど）は最小限にし、普通の文章で説明してください
+   - 専門用語を使う場合は、わかりやすく説明を加えてください
+   - 回答は詳しく具体的に。簡潔すぎる回答は避けてください
 
-4. 段階的に考えること：質問の分析 → 必要知識の特定 → 回答の検索・組み立て → 埋め込み知識との照合 → 返答の整形。
+4. 事例が複数ある場合
+   - ユーザーが「事例を教えて」と聞いた場合は、必ず具体的な事例を2〜3件紹介してください
+   - 各事例について、タイトル、状況、原因、対策、URLを含めてください
+   - 一般的な説明だけで終わらせないでください
 
-5. 労働安全・衛生に関する妥当な質問には、常に明確かつ簡潔に答える努力を継続すること。
+5. URLの取り扱い
+   - ナレッジベースに「【詳細情報】」としてURLが含まれている場合は、必ずそのURLを回答に含めてください
+   - 「詳細はこちらをご覧ください: （URL）」という形で提示してください
 
-書式:
+【回答例】
+ユーザー: フォークリフトの事故事例を教えて
 
-- 自然で会話的な日本語で回答する。
-- 回答は簡潔に（2〜5文）。複雑な質問では必要に応じて箇条書きを用いる。
-- 特に一般的または重要な質問の場合は、その旨を明示し、該当する場合は予防的な安全ヒントも提示する。
+良い回答:
+フォークリフト関連の労働災害事例をいくつかご紹介します。
 
-重要:
-あなたは労働安全・衛生のためのウェブベースの顧客サポート・チャットボットです。回答の前に必ず質問を綿密に分析し、埋め込みナレッジベースを参照してください。関連する知識をすべて検討し終えるまで粘り強く対応し、その後に回答を提示してください。`;
+1つ目は、リーチフォークリフトのヘッドガードとマストにはさまれて死亡した事例です。被災者は倉庫内で作業中、フォークリフトのメインスイッチを入れたまま運転席を離れて作業を行っていました。運転台の上に置かれた木箱がマストの操作レバーを押してしまい、はさまれる事故となりました。対策としては、運転席を離れる際は必ずメインスイッチを切ること、フォークリフトを作業足場として使用しないことが重要です。詳細はこちら: https://anzeninfo.mhlw.go.jp/anzen_pg/SAI_DET.aspx?joho_no=1
+
+2つ目は...（続けて2〜3件の事例を紹介）
+
+このように、内部のナレッジベースを最大限活用して、具体的で実用的な回答を心がけてください。`;
+
 
 // Knowledge base path
 const KNOWLEDGE_PATH = path.join(__dirname, '../data/knowledge.json');
@@ -121,27 +144,64 @@ function searchKnowledge(knowledge, query) {
   const results = [];
   const queryLower = query.toLowerCase();
 
+  // クエリを単語に分割（スペースやカンマで区切る）
+  const queryWords = queryLower.split(/[\s,、]+/).filter(word => word.length > 1);
+
   knowledge.categories.forEach(category => {
     category.items.forEach(item => {
-      // Check if query matches question, answer, or keywords
-      const questionMatch = item.question.toLowerCase().includes(queryLower);
-      const answerMatch = item.answer.toLowerCase().includes(queryLower);
-      const keywordMatch = item.keywords.some(keyword =>
-        queryLower.includes(keyword.toLowerCase()) ||
-        keyword.toLowerCase().includes(queryLower)
-      );
+      let relevance = 0;
 
-      if (questionMatch || answerMatch || keywordMatch) {
+      // 質問文とのマッチング
+      const questionLower = item.question.toLowerCase();
+      if (questionLower.includes(queryLower)) {
+        relevance += 5; // 完全一致は高スコア
+      } else {
+        // 単語ごとのマッチング
+        queryWords.forEach(word => {
+          if (questionLower.includes(word)) {
+            relevance += 2;
+          }
+        });
+      }
+
+      // キーワードとのマッチング
+      item.keywords.forEach(keyword => {
+        const keywordLower = keyword.toLowerCase();
+        if (queryLower.includes(keywordLower) || keywordLower.includes(queryLower)) {
+          relevance += 4;
+        } else {
+          queryWords.forEach(word => {
+            if (keywordLower.includes(word) || word.includes(keywordLower)) {
+              relevance += 2;
+            }
+          });
+        }
+      });
+
+      // 回答文とのマッチング（重要度は低め）
+      const answerLower = item.answer.toLowerCase();
+      queryWords.forEach(word => {
+        if (answerLower.includes(word)) {
+          relevance += 1;
+        }
+      });
+
+      // 災害事例カテゴリーの場合は、スコアを少し上げる
+      if (category.name === '災害事例集' && relevance > 0) {
+        relevance += 1;
+      }
+
+      if (relevance > 0) {
         results.push({
           category: category.name,
           ...item,
-          relevance: (questionMatch ? 3 : 0) + (keywordMatch ? 2 : 0) + (answerMatch ? 1 : 0)
+          relevance: relevance
         });
       }
     });
   });
 
-  // Sort by relevance
+  // Sort by relevance (high to low)
   return results.sort((a, b) => b.relevance - a.relevance);
 }
 
@@ -151,10 +211,31 @@ function formatKnowledgeContext(knowledgeItems) {
     return '';
   }
 
+  // 災害事例を優先し、より多くの事例を含める
+  const disasterCases = knowledgeItems.filter(item => item.category === '災害事例集');
+  const otherItems = knowledgeItems.filter(item => item.category !== '災害事例集');
+
+  // 災害事例は最大8件、その他は最大5件
+  const selectedDisasterCases = disasterCases.slice(0, 8);
+  const selectedOtherItems = otherItems.slice(0, 5);
+
   let context = '\n\n【参考ナレッジベース】\n';
-  knowledgeItems.slice(0, 5).forEach((item, index) => {
-    context += `\n${index + 1}. Q: ${item.question}\n   A: ${item.answer}\n`;
-  });
+
+  // 災害事例を先に追加
+  if (selectedDisasterCases.length > 0) {
+    context += '\n＜災害事例＞\n';
+    selectedDisasterCases.forEach((item, index) => {
+      context += `\n${index + 1}. ${item.question}\n${item.answer}\n`;
+    });
+  }
+
+  // その他の知識を追加
+  if (selectedOtherItems.length > 0) {
+    context += '\n＜その他の関連知識＞\n';
+    selectedOtherItems.forEach((item, index) => {
+      context += `\n${index + 1}. Q: ${item.question}\n   A: ${item.answer}\n`;
+    });
+  }
 
   return context;
 }
