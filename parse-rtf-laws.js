@@ -4,73 +4,105 @@ const iconv = require('iconv-lite');
 
 // RTFファイルのパス
 const files = {
-  aneihou: { path: 'aneihou.rtf', name: '労働安全衛生法', lawId: '347AC0000000057' },
-  sekourei: { path: 'sekourei.rtf', name: '労働安全衛生法施行令', lawId: '347CO0000000318' },
-  kisoku: { path: 'kisoku.rtf', name: '労働安全衛生規則', lawId: '347M50002000032' }
+  aneihou: { path: 'aneihou_correct.rtf', name: '労働安全衛生法', lawId: '347AC0000000057' },
+  sekourei: { path: 'sekourei_correct.rtf', name: '労働安全衛生法施行令', lawId: '347CO0000000318' },
+  kisoku: { path: 'kisoku_correct.rtf', name: '労働安全衛生規則', lawId: '347M50002000032' }
 };
 
-// RTFからテキストを抽出（Shift-JIS対応）
-function extractTextFromRTF(buffer) {
-  let text = '';
-  let i = 0;
+// RTFからテキストを抽出（Unicode対応）
+function extractTextFromRTF(rtfContent) {
+  let text = rtfContent;
 
-  while (i < buffer.length) {
-    // \'XX 形式のエスケープシーケンスを検出
-    if (buffer[i] === 0x5C && buffer[i + 1] === 0x27) { // \'
-      const hex = buffer.toString('ascii', i + 2, i + 4);
-      const byte = parseInt(hex, 16);
-
-      // 次のバイトも確認（Shift-JISは2バイト文字）
-      if (i + 6 < buffer.length &&
-        buffer[i + 4] === 0x5C &&
-        buffer[i + 5] === 0x27) {
-        const hex2 = buffer.toString('ascii', i + 6, i + 8);
-        const byte2 = parseInt(hex2, 16);
-
-        // 2バイト文字として変換
-        const sjisBytes = Buffer.from([byte, byte2]);
-        try {
-          text += iconv.decode(sjisBytes, 'shift_jis');
-          i += 8;
-          continue;
-        } catch (e) {
-          // 変換失敗時は次へ
-        }
-      }
-
-      i += 4;
+  // \uNNNNN形式のUnicodeエスケープをデコード
+  text = text.replace(/\\u(-?\d+)/g, (match, code) => {
+    const codePoint = parseInt(code);
+    // 負の値の場合は65536を加算（RTF仕様）
+    const actualCode = codePoint < 0 ? 65536 + codePoint : codePoint;
+    try {
+      return String.fromCharCode(actualCode);
+    } catch (e) {
+      return '';
     }
-    // 通常のASCII文字
-    else if (buffer[i] >= 0x20 && buffer[i] < 0x7F && buffer[i] !== 0x5C && buffer[i] !== 0x7B && buffer[i] !== 0x7D) {
-      text += String.fromCharCode(buffer[i]);
-      i++;
-    }
-    // その他の制御文字はスキップ
-    else {
-      i++;
+  });
+
+  // RTF制御コードを削除
+  text = text.replace(/\\[a-z]+(-?\d+)?[ ]?/gi, ' ');
+  text = text.replace(/[{}]/g, ' ');
+  text = text.replace(/\\par/g, '\n');
+
+  // 複数の空白を整理
+  text = text.replace(/\s+/g, ' ');
+
+  return text;
+}
+
+// 漢数字をアラビア数字に変換
+function kanjiToNumber(kanji) {
+  const kanjiMap = {
+    '〇': 0, '零': 0,
+    '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
+    '六': 6, '七': 7, '八': 8, '九': 9, '十': 10,
+    '百': 100, '千': 1000
+  };
+
+  let result = 0;
+  let temp = 0;
+  let unit = 1;
+
+  for (let i = kanji.length - 1; i >= 0; i--) {
+    const char = kanji[i];
+    const val = kanjiMap[char];
+
+    if (val >= 10) {
+      unit = val;
+      if (temp === 0) temp = 1;
+      result += temp * unit;
+      temp = 0;
+    } else {
+      temp += val * unit;
     }
   }
 
-  return text;
+  result += temp;
+  return result;
 }
 
 // 条文を抽出する関数
 function extractArticles(text, lawName, lawId) {
   const articles = [];
 
-  // 条文パターンマッチング
-  const articlePattern = /第([0-9]+)条(?:の([0-9]+))?\s*(?:[（\(]([^）\)]+)[）\)])?/g;
+  // 条文パターンマッチング（漢数字とアラビア数字の両方に対応）
+  const articlePattern = /第([一二三四五六七八九十百千〇零0-9]+)条(?:の([一二三四五六七八九十0-9]+))?\s*(?:[（\(]([^）\)]+)[）\)])?/g;
 
   const matches = [];
   let match;
 
   while ((match = articlePattern.exec(text)) !== null) {
+    const articleNumKanji = match[1];
+    const articleSubNumKanji = match[2];
+
+    // 漢数字をアラビア数字に変換
+    let articleNum = /^[0-9]+$/.test(articleNumKanji) ?
+      articleNumKanji : kanjiToNumber(articleNumKanji).toString();
+
+    if (articleSubNumKanji) {
+      const subNum = /^[0-9]+$/.test(articleSubNumKanji) ?
+        articleSubNumKanji : kanjiToNumber(articleSubNumKanji).toString();
+      articleNum += `の${subNum}`;
+    }
+
     matches.push({
       index: match.index,
-      articleNum: match[1] + (match[2] ? `の${match[2]}` : ''),
+      articleNum: articleNum,
+      articleNumDisplay: match[1] + (match[2] ? `の${match[2]}` : ''),
       title: match[3] || '',
       fullMatch: match[0]
     });
+  }
+
+  console.log(`  条文パターン検出: ${matches.length}件`);
+  if (matches.length > 0) {
+    console.log(`  例: ${matches[0].fullMatch}, ${matches.slice(-1)[0].fullMatch}`);
   }
 
   // 各条文の内容を抽出
@@ -79,7 +111,7 @@ function extractArticles(text, lawName, lawId) {
     const next = matches[i + 1];
 
     const startIndex = current.index + current.fullMatch.length;
-    const endIndex = next ? next.index : Math.min(current.index + 500, text.length);
+    const endIndex = next ? next.index : Math.min(current.index + 800, text.length);
 
     let content = text.substring(startIndex, endIndex).trim();
 
@@ -87,10 +119,18 @@ function extractArticles(text, lawName, lawId) {
     content = content.replace(/[\r\n\t]+/g, ' ');
     content = content.replace(/\s+/g, ' ');
 
-    // 最初の文または段落を取得
-    const firstSentence = content.split(/[。\n]/)[0];
-    if (firstSentence && firstSentence.length > 10) {
-      content = firstSentence + '。';
+    // 最初の段落を取得（次の項目番号まで）
+    const paragraphMatch = content.match(/^([^一二三四五六七八九十2-9]+)/);
+    if (paragraphMatch) {
+      content = paragraphMatch[1].trim();
+    }
+
+    // 文の終わりで切る
+    const sentenceEnd = content.indexOf('。');
+    if (sentenceEnd > 0 && sentenceEnd < 300) {
+      content = content.substring(0, sentenceEnd + 1);
+    } else if (content.length > 250) {
+      content = content.substring(0, 247) + '...';
     }
 
     // 内容が短すぎる場合はスキップ
@@ -102,10 +142,15 @@ function extractArticles(text, lawName, lawId) {
     const urlArticleNum = current.articleNum.replace('の', '_');
     const url = `https://laws.e-gov.go.jp/law/${lawId}#Mp-At_${urlArticleNum}`;
 
+    const keywords = ['法令', lawName];
+    if (current.title) keywords.push(current.title);
+    keywords.push(`第${current.articleNum}条`);
+    keywords.push(`第${current.articleNumDisplay}条`);
+
     const article = {
       question: `【法令】${lawName} 第${current.articleNum}条${current.title ? `（${current.title}）` : ''}`,
       answer: `${content}\n詳細: ${url}`,
-      keywords: ['法令', lawName, current.title || '条文', `第${current.articleNum}条`].filter(Boolean)
+      keywords: keywords
     };
 
     articles.push(article);
@@ -123,20 +168,27 @@ async function main() {
     for (const [key, fileInfo] of Object.entries(files)) {
       console.log(`\n${fileInfo.name}を処理中...`);
 
-      const buffer = fs.readFileSync(fileInfo.path);
-      console.log(`  ファイルサイズ: ${buffer.length} bytes`);
+      const rtfContent = fs.readFileSync(fileInfo.path, 'utf8');
+      const text = extractTextFromRTF(rtfContent);
 
-      const text = extractTextFromRTF(buffer);
       console.log(`  抽出したテキスト長: ${text.length}文字`);
 
-      // テキストサンプルを表示
-      console.log(`  テキストサンプル: ${text.substring(0, 100)}...`);
+      // 「第」を含む部分を探す
+      const daiIndex = text.indexOf('第');
+      if (daiIndex >= 0) {
+        console.log(`  「第」検出位置: ${daiIndex}`);
+        console.log(`  サンプル: ${text.substring(daiIndex, daiIndex + 100)}...`);
+      } else {
+        console.log(`  「第」が見つかりませんでした`);
+        console.log(`  テキストサンプル: ${text.substring(5000, 5150)}...`);
+      }
 
       const articles = extractArticles(text, fileInfo.name, fileInfo.lawId);
       console.log(`  抽出した条文数: ${articles.length}`);
 
       if (articles.length > 0) {
         console.log(`  最初の条文: ${articles[0].question}`);
+        console.log(`  内容サンプル: ${articles[0].answer.substring(0, 100)}...`);
       }
 
       allArticles.push(...articles);
@@ -144,7 +196,6 @@ async function main() {
 
     if (allArticles.length === 0) {
       console.log('\n警告: 条文が抽出できませんでした');
-      console.log('手動で確認が必要です');
       return;
     }
 
@@ -161,7 +212,19 @@ async function main() {
     console.log('\n--- サンプル（最初の5件）---');
     allArticles.slice(0, 5).forEach((article, i) => {
       console.log(`\n${i + 1}. ${article.question}`);
-      console.log(`   ${article.answer.substring(0, 120)}...`);
+      console.log(`   ${article.answer.substring(0, 150)}...`);
+    });
+
+    // 統計情報
+    const lawStats = {};
+    for (const [key, fileInfo] of Object.entries(files)) {
+      const count = allArticles.filter(a => a.question.includes(fileInfo.name)).length;
+      lawStats[fileInfo.name] = count;
+    }
+
+    console.log('\n--- 法令別統計 ---');
+    Object.entries(lawStats).forEach(([name, count]) => {
+      console.log(`${name}: ${count}件`);
     });
 
   } catch (error) {
