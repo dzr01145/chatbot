@@ -15,6 +15,31 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Basic Authentication (パスワード保護)
+if (process.env.BASIC_AUTH_USER && process.env.BASIC_AUTH_PASSWORD) {
+  app.use((req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      res.setHeader('WWW-Authenticate', 'Basic realm="Safety Chatbot"');
+      return res.status(401).send('認証が必要です');
+    }
+
+    const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':');
+    const user = auth[0];
+    const pass = auth[1];
+
+    if (user === process.env.BASIC_AUTH_USER && pass === process.env.BASIC_AUTH_PASSWORD) {
+      next();
+    } else {
+      res.setHeader('WWW-Authenticate', 'Basic realm="Safety Chatbot"');
+      return res.status(401).send('認証に失敗しました');
+    }
+  });
+  console.log('✓ 基本認証が有効です');
+}
+
 app.use(express.static(path.join(__dirname, '../public')));
 
 // AI Provider selection (google, openai, or anthropic)

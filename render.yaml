@@ -9,6 +9,10 @@ services:
         value: google
       - key: GOOGLE_API_KEY
         sync: false
+      - key: BASIC_AUTH_USER
+        sync: false
+      - key: BASIC_AUTH_PASSWORD
+        sync: false
       - key: NODE_ENV
         value: production
     autoDeploy: true
