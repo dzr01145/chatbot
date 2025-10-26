@@ -369,10 +369,6 @@ body {
 }
 
 /* Form */
-.add-knowledge-form {
-    margin: 12px 0;
-}
-
 .form-group {
     margin-bottom: 10px;
 }
@@ -405,23 +401,6 @@ body {
 
 .form-group textarea {
     resize: vertical;
-}
-
-.add-btn {
-    width: 100%;
-    padding: 10px;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.add-btn:hover {
-    background: var(--primary-dark);
 }
 
 /* Knowledge List */

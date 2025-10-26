@@ -261,7 +261,6 @@ async function loadKnowledgeBase() {
         allKnowledge = knowledge; // グローバル変数に保存
 
         displayKnowledgeStats(knowledge);
-        populateCategorySelect(knowledge);
         populateCategoryFilter(knowledge); // フィルター用セレクトも埋める
         displayKnowledgeList(knowledge);
 
@@ -282,19 +281,6 @@ function displayKnowledgeStats(knowledge) {
         <p><strong>ナレッジ項目数:</strong> ${totalItems}</p>
         <p><strong>最終更新:</strong> ${knowledge.metadata.last_updated || 'N/A'}</p>
     `;
-}
-
-// Populate category select (for adding new knowledge)
-function populateCategorySelect(knowledge) {
-    const select = document.getElementById('categorySelect');
-    select.innerHTML = '<option value="">選択してください</option>';
-
-    knowledge.categories.forEach(category => {
-        const option = document.createElement('option');
-        option.value = category.id;
-        option.textContent = category.name;
-        select.appendChild(option);
-    });
 }
 
 // Populate category filter
@@ -461,55 +447,4 @@ function displayKnowledgeList(knowledge) {
     });
 
     displayFilteredKnowledge(allItems);
-}
-
-// Add knowledge
-async function addKnowledge(event) {
-    event.preventDefault();
-
-    const categoryId = document.getElementById('categorySelect').value;
-    const question = document.getElementById('questionInput').value.trim();
-    const answer = document.getElementById('answerInput').value.trim();
-    const keywordsStr = document.getElementById('keywordsInput').value.trim();
-
-    if (!categoryId || !question || !answer || !keywordsStr) {
-        alert('すべての項目を入力してください');
-        return;
-    }
-
-    const keywords = keywordsStr.split(',').map(k => k.trim()).filter(k => k);
-
-    try {
-        const response = await fetch(`${API_BASE}/api/knowledge`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                categoryId,
-                question,
-                answer,
-                keywords
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'ナレッジの追加に失敗しました');
-        }
-
-        const data = await response.json();
-
-        // Clear form
-        document.getElementById('addKnowledgeForm').reset();
-
-        // Reload knowledge base
-        await loadKnowledgeBase();
-
-        alert('ナレッジが追加されました！');
-
-    } catch (error) {
-        console.error('Error adding knowledge:', error);
-        alert(`エラー: ${error.message}`);
-    }
 }
