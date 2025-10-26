@@ -266,6 +266,93 @@ PORT=3001
 
 `data/knowledge.json` のJSON形式が正しいか確認してください。
 
+## インターネット上で公開する方法（デプロイ）
+
+ローカル環境で動作確認ができたら、インターネット上で公開できます。
+
+### おすすめの方法
+
+#### オプション1: Render（最も簡単・おすすめ）
+
+**特徴:**
+- 完全無料プランあり
+- GitHubと自動連携
+- 設定が簡単
+
+**手順:**
+
+1. **Renderアカウント作成**
+   - https://render.com/ にアクセス
+   - GitHubアカウントでサインアップ
+
+2. **新しいWebサービスを作成**
+   - ダッシュボードで「New +」→「Web Service」を選択
+   - GitHubリポジトリを接続（`dzr01145/chatbot`）
+   - ブランチ: `claude/create-safety-chatbot-011CUU68CD2PzPJBqRSg63h9`を選択
+
+3. **設定**
+   - Name: `safety-chatbot`（任意の名前）
+   - Environment: `Node`
+   - Build Command: `npm install`
+   - Start Command: `npm start`
+   - Plan: `Free`を選択
+
+4. **環境変数を設定**
+   - 「Environment」タブで以下を追加：
+   ```
+   AI_PROVIDER = google
+   GOOGLE_API_KEY = あなたのAPIキー
+   NODE_ENV = production
+   ```
+
+5. **デプロイ**
+   - 「Create Web Service」をクリック
+   - 数分待つとデプロイ完了
+   - URLが発行されます（例: `https://safety-chatbot-xxxx.onrender.com`）
+
+#### オプション2: Railway
+
+**特徴:**
+- 無料枠あり（月500時間）
+- シンプルな設定
+
+**手順:**
+
+1. **Railwayアカウント作成**
+   - https://railway.app/ にアクセス
+   - GitHubアカウントでサインアップ
+
+2. **新しいプロジェクトを作成**
+   - 「New Project」→「Deploy from GitHub repo」
+   - リポジトリを選択
+
+3. **環境変数を設定**
+   - プロジェクト設定で「Variables」タブを開く
+   - 以下を追加：
+   ```
+   AI_PROVIDER = google
+   GOOGLE_API_KEY = あなたのAPIキー
+   ```
+
+4. **デプロイ**
+   - 自動的にデプロイが開始
+   - URLが発行されます
+
+### 公開後の確認
+
+デプロイが完了したら：
+1. 発行されたURLにアクセス
+2. チャット機能が正常に動作するか確認
+3. ナレッジベースが読み込まれているか確認
+
+### 注意事項
+
+- **APIキーの管理**: 環境変数に必ず設定してください（.envファイルはGitHubにプッシュしないこと）
+- **無料プランの制限**:
+  - Render: 15分間アクセスがないとスリープ、起動に数秒かかる
+  - Railway: 月500時間まで無料
+- **カスタムドメイン**: 有料プランでカスタムドメインを設定可能
+
 ## 今後の拡張案
 
 - [ ] ベクトルデータベース（Pinecone, Weaviate等）との統合
