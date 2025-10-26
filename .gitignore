@@ -17,3 +17,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+# Backup files
+*.backup.json
+data/*.backup.json
