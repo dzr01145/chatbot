@@ -207,3 +207,43 @@ body {
 .chat-messages::-webkit-scrollbar-thumb:hover {
     background: #999;
 }
+
+/* ローディングアニメーション */
+.loading-dots {
+    display: flex;
+    gap: 4px;
+    padding: 5px 0;
+}
+
+.loading-dots span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #667eea;
+    animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.loading-dots span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.loading-dots span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+    0%, 80%, 100% {
+        transform: scale(0);
+        opacity: 0.5;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* ボタン無効化時のスタイル */
+.send-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
