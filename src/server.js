@@ -141,7 +141,7 @@ async function callAI(message, conversationHistory, knowledgeContext) {
   if (AI_PROVIDER === 'google') {
     // Google Gemini API
     const model = aiClient.getGenerativeModel({
-      model: 'gemini-pro',
+      model: 'gemini-1.5-pro-latest',
       systemInstruction: SYSTEM_PROMPT
     });
 
