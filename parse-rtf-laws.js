@@ -41,38 +41,54 @@ function kanjiToNumber(kanji) {
   const kanjiMap = {
     '〇': 0, '零': 0,
     '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
-    '六': 6, '七': 7, '八': 8, '九': 9, '十': 10,
-    '百': 100, '千': 1000
+    '六': 6, '七': 7, '八': 8, '九': 9,
+    '十': 10, '百': 100, '千': 1000
   };
 
   let result = 0;
-  let temp = 0;
-  let unit = 1;
+  let currentNum = 0;
+  let currentUnit = 1;
 
-  for (let i = kanji.length - 1; i >= 0; i--) {
+  for (let i = 0; i < kanji.length; i++) {
     const char = kanji[i];
     const val = kanjiMap[char];
 
+    if (val === undefined) {
+      continue;
+    }
+
     if (val >= 10) {
-      unit = val;
-      if (temp === 0) temp = 1;
-      result += temp * unit;
-      temp = 0;
+      // 位（十、百、千）の場合
+      if (currentNum === 0) {
+        currentNum = 1; // 「十」「百」「千」の前に数字がない場合は1とする
+      }
+      result += currentNum * val;
+      currentNum = 0;
+      currentUnit = val;
     } else {
-      temp += val * unit;
+      // 数字（一～九、〇）の場合
+      currentNum = val;
     }
   }
 
-  result += temp;
+  // 最後に残った数字を加算
+  result += currentNum;
+
   return result;
 }
 
 // 条文を抽出する関数
 function extractArticles(text, lawName, lawId) {
   const articles = [];
+  const seenArticles = new Set(); // 重複チェック用
+
+  // 目次部分をスキップ（本文は条文番号の後に実際の文章が続く）
+  // 目次: 「第XX条（タイトル）」のみ
+  // 本文: 「第XX条 [条文の内容が続く]」
 
   // 条文パターンマッチング（漢数字とアラビア数字の両方に対応）
-  const articlePattern = /第([一二三四五六七八九十百千〇零0-9]+)条(?:の([一二三四五六七八九十0-9]+))?\s*(?:[（\(]([^）\)]+)[）\)])?/g;
+  // 条文番号の後に実際の内容（15文字以上）が続くものだけを抽出
+  const articlePattern = /第([一二三四五六七八九十百千〇零0-9]+)条(?:の([一二三四五六七八九十0-9]+))?\s*(?:[（\(]([^）\)]+)[）\)])?\s+([^\n]{15,})/g;
 
   const matches = [];
   let match;
@@ -80,6 +96,13 @@ function extractArticles(text, lawName, lawId) {
   while ((match = articlePattern.exec(text)) !== null) {
     const articleNumKanji = match[1];
     const articleSubNumKanji = match[2];
+    const contentPreview = match[4]; // 条文の内容のプレビュー
+
+    // 目次っぽいパターンをスキップ
+    // 「第XX条」「第XX条―第YY条」などのみの行は目次
+    if (!contentPreview || contentPreview.match(/^[（\(]?第[一二三四五六七八九十百千〇零0-9]+条/)) {
+      continue;
+    }
 
     // 漢数字をアラビア数字に変換
     let articleNum = /^[0-9]+$/.test(articleNumKanji) ?
@@ -90,6 +113,13 @@ function extractArticles(text, lawName, lawId) {
         articleSubNumKanji : kanjiToNumber(articleSubNumKanji).toString();
       articleNum += `の${subNum}`;
     }
+
+    // 重複チェック
+    const articleKey = `${lawName}_${articleNum}`;
+    if (seenArticles.has(articleKey)) {
+      continue; // 重複はスキップ
+    }
+    seenArticles.add(articleKey);
 
     matches.push({
       index: match.index,
