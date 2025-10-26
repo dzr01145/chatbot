@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>労働安全衛生サポートチャット</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="chat-container">
+        <header class="chat-header">
+            <h1>労働安全衛生サポートチャット</h1>
+            <p class="subtitle">労働安全衛生に関するご質問にお答えします</p>
+        </header>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot-message">
+                <div class="message-content">
+                    こんにちは！労働安全衛生に関するご質問をお気軽にお聞かせください。
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <input
+                type="text"
+                id="userInput"
+                class="chat-input"
+                placeholder="メッセージを入力してください..."
+                autocomplete="off"
+            >
+            <button id="sendButton" class="send-button">送信</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
