@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>労働安全衛生チャットボット</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>労働安全衛生サポートチャット</h1>
+            <p class="subtitle">労働安全衛生に関するご質問にお答えします</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Chat Area -->
+            <div class="chat-section">
+                <div class="chat-container" id="chatContainer">
+                    <div class="welcome-message">
+                        <h2>ようこそ！</h2>
+                        <p>労働安全衛生に関する質問をお気軽にどうぞ。</p>
+                        <div class="example-questions">
+                            <p><strong>質問例：</strong></p>
+                            <button class="example-btn" onclick="askExample('労働安全衛生法とは何ですか？')">
+                                労働安全衛生法とは何ですか？
+                            </button>
+                            <button class="example-btn" onclick="askExample('事務所で起こりやすい労働災害の例を教えてください')">
+                                事務所で起こりやすい労働災害は？
+                            </button>
+                            <button class="example-btn" onclick="askExample('熱中症への対策を教えてください')">
+                                熱中症への対策を教えてください
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-area">
+                    <div class="input-wrapper">
+                        <textarea
+                            id="userInput"
+                            placeholder="質問を入力してください..."
+                            rows="1"
+                        ></textarea>
+                        <button id="sendBtn" onclick="sendMessage()">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Knowledge Management Panel -->
+            <div class="knowledge-section">
+                <h3>ナレッジ管理</h3>
+
+                <div class="knowledge-stats" id="knowledgeStats">
+                    <p>読み込み中...</p>
+                </div>
+
+                <div class="add-knowledge-form">
+                    <h4>新しいナレッジを追加</h4>
+                    <form id="addKnowledgeForm" onsubmit="addKnowledge(event)">
+                        <div class="form-group">
+                            <label for="categorySelect">カテゴリー:</label>
+                            <select id="categorySelect" required>
+                                <option value="">選択してください</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="questionInput">質問:</label>
+                            <input type="text" id="questionInput" required placeholder="例: 安全管理者の役割とは？">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="answerInput">回答:</label>
+                            <textarea id="answerInput" required rows="4" placeholder="詳細な回答を入力してください"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="keywordsInput">キーワード (カンマ区切り):</label>
+                            <input type="text" id="keywordsInput" required placeholder="例: 安全管理者, 役割, 義務">
+                        </div>
+
+                        <button type="submit" class="add-btn">追加</button>
+                    </form>
+                </div>
+
+                <div class="knowledge-list">
+                    <h4>既存のナレッジ</h4>
+                    <div id="knowledgeList">
+                        <p>読み込み中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>労働安全衛生に関する情報提供を目的としています。具体的な法的判断については専門家にご相談ください。</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
