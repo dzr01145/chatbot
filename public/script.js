@@ -4,6 +4,11 @@ const API_BASE = window.location.origin;
 // Conversation history
 let conversationHistory = [];
 
+// ナレッジ管理用の状態
+let allKnowledge = null;
+let currentPage = 1;
+const ITEMS_PER_PAGE = 10;
+
 // Load knowledge base on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadKnowledgeBase();
@@ -231,8 +236,11 @@ async function loadKnowledgeBase() {
         const response = await fetch(`${API_BASE}/api/knowledge`);
         const knowledge = await response.json();
 
+        allKnowledge = knowledge; // グローバル変数に保存
+
         displayKnowledgeStats(knowledge);
         populateCategorySelect(knowledge);
+        populateCategoryFilter(knowledge); // フィルター用セレクトも埋める
         displayKnowledgeList(knowledge);
 
     } catch (error) {
@@ -254,7 +262,7 @@ function displayKnowledgeStats(knowledge) {
     `;
 }
 
-// Populate category select
+// Populate category select (for adding new knowledge)
 function populateCategorySelect(knowledge) {
     const select = document.getElementById('categorySelect');
     select.innerHTML = '<option value="">選択してください</option>';
@@ -267,35 +275,170 @@ function populateCategorySelect(knowledge) {
     });
 }
 
-// Display knowledge list
-function displayKnowledgeList(knowledge) {
+// Populate category filter
+function populateCategoryFilter(knowledge) {
+    const filter = document.getElementById('categoryFilter');
+    filter.innerHTML = '<option value="">全てのカテゴリー</option>';
+
+    knowledge.categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category.id;
+        option.textContent = category.name;
+        filter.appendChild(option);
+    });
+}
+
+// Filter knowledge based on category and keyword
+function filterKnowledge() {
+    if (!allKnowledge) return;
+
+    const categoryFilter = document.getElementById('categoryFilter').value;
+    const keywordFilter = document.getElementById('keywordFilter').value.toLowerCase();
+
+    // フィルタリング
+    let filteredCategories = allKnowledge.categories;
+
+    // カテゴリーでフィルター
+    if (categoryFilter) {
+        filteredCategories = filteredCategories.filter(cat => cat.id === categoryFilter);
+    }
+
+    // キーワードでフィルター
+    let filteredItems = [];
+    filteredCategories.forEach(category => {
+        category.items.forEach(item => {
+            if (keywordFilter) {
+                const matchQuestion = item.question.toLowerCase().includes(keywordFilter);
+                const matchAnswer = item.answer.toLowerCase().includes(keywordFilter);
+                const matchKeywords = item.keywords.some(kw => kw.toLowerCase().includes(keywordFilter));
+
+                if (matchQuestion || matchAnswer || matchKeywords) {
+                    filteredItems.push({ ...item, category: category.name });
+                }
+            } else {
+                filteredItems.push({ ...item, category: category.name });
+            }
+        });
+    });
+
+    // ページをリセット
+    currentPage = 1;
+
+    // 表示
+    displayFilteredKnowledge(filteredItems);
+}
+
+// Display filtered knowledge with pagination
+function displayFilteredKnowledge(items) {
     const listDiv = document.getElementById('knowledgeList');
     listDiv.innerHTML = '';
 
-    if (!knowledge.categories || knowledge.categories.length === 0) {
-        listDiv.innerHTML = '<p>ナレッジがありません</p>';
+    if (items.length === 0) {
+        listDiv.innerHTML = '<p>該当するナレッジがありません</p>';
+        document.getElementById('pagination').innerHTML = '';
         return;
     }
 
+    // ページネーション計算
+    const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const pageItems = items.slice(startIndex, endIndex);
+
+    // アイテムを表示
+    pageItems.forEach(item => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'knowledge-item';
+
+        const keywords = item.keywords.map(kw =>
+            `<span class="keyword-tag">${kw}</span>`
+        ).join('');
+
+        itemDiv.innerHTML = `
+            <div class="knowledge-item-category">${item.category}</div>
+            <div class="knowledge-item-question">${item.question}</div>
+            <div class="knowledge-item-answer">${item.answer.substring(0, 100)}${item.answer.length > 100 ? '...' : ''}</div>
+            <div class="knowledge-item-keywords">${keywords}</div>
+        `;
+
+        listDiv.appendChild(itemDiv);
+    });
+
+    // ページネーション表示
+    displayPagination(totalPages, items);
+}
+
+// Display pagination controls
+function displayPagination(totalPages, items) {
+    const paginationDiv = document.getElementById('pagination');
+    paginationDiv.innerHTML = '';
+
+    if (totalPages <= 1) return;
+
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+    const endIndex = Math.min(currentPage * ITEMS_PER_PAGE, items.length);
+
+    // ページ情報
+    const info = document.createElement('div');
+    info.className = 'pagination-info';
+    info.textContent = `${startIndex}-${endIndex} / ${items.length}件`;
+    paginationDiv.appendChild(info);
+
+    // ボタンコンテナ
+    const buttonsDiv = document.createElement('div');
+    buttonsDiv.className = 'pagination-buttons';
+
+    // 前へボタン
+    const prevBtn = document.createElement('button');
+    prevBtn.textContent = '← 前へ';
+    prevBtn.className = 'pagination-btn';
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.onclick = () => {
+        if (currentPage > 1) {
+            currentPage--;
+            filterKnowledge();
+        }
+    };
+    buttonsDiv.appendChild(prevBtn);
+
+    // ページ番号
+    const pageInfo = document.createElement('span');
+    pageInfo.className = 'page-info';
+    pageInfo.textContent = `${currentPage} / ${totalPages}`;
+    buttonsDiv.appendChild(pageInfo);
+
+    // 次へボタン
+    const nextBtn = document.createElement('button');
+    nextBtn.textContent = '次へ →';
+    nextBtn.className = 'pagination-btn';
+    nextBtn.disabled = currentPage === totalPages;
+    nextBtn.onclick = () => {
+        if (currentPage < totalPages) {
+            currentPage++;
+            filterKnowledge();
+        }
+    };
+    buttonsDiv.appendChild(nextBtn);
+
+    paginationDiv.appendChild(buttonsDiv);
+}
+
+// Display knowledge list (initial load)
+function displayKnowledgeList(knowledge) {
+    if (!knowledge.categories || knowledge.categories.length === 0) {
+        document.getElementById('knowledgeList').innerHTML = '<p>ナレッジがありません</p>';
+        return;
+    }
+
+    // 全アイテムを取得
+    let allItems = [];
     knowledge.categories.forEach(category => {
         category.items.forEach(item => {
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'knowledge-item';
-
-            const keywords = item.keywords.map(kw =>
-                `<span class="keyword-tag">${kw}</span>`
-            ).join('');
-
-            itemDiv.innerHTML = `
-                <div class="knowledge-item-category">${category.name}</div>
-                <div class="knowledge-item-question">${item.question}</div>
-                <div class="knowledge-item-answer">${item.answer.substring(0, 100)}${item.answer.length > 100 ? '...' : ''}</div>
-                <div class="knowledge-item-keywords">${keywords}</div>
-            `;
-
-            listDiv.appendChild(itemDiv);
+            allItems.push({ ...item, category: category.name });
         });
     });
+
+    displayFilteredKnowledge(allItems);
 }
 
 // Add knowledge
