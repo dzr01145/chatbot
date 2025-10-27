@@ -2,6 +2,7 @@ services:
   - type: web
     name: safety-chatbot
     runtime: node
+    branch: claude/investigate-repository-issue-011CUXSzj97C4MeE8FuUFaNf
     buildCommand: npm install
     startCommand: npm start
     envVars:

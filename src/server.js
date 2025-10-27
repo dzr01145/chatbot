@@ -46,31 +46,78 @@ app.use(express.static(path.join(__dirname, '../public')));
 const AI_PROVIDER = process.env.AI_PROVIDER || 'google';
 
 // システムプロンプト（ユーザー提供）
-const SYSTEM_PROMPT = `あなたは顧客サポート向けに設計された、AI 搭載のウェブベース・チャットボットです。必要に応じて追加の知識モジュールを埋め込める柔軟なアーキテクチャを備えています。コア機能は、更新可能な内部ナレッジベース（ナレッジ）を活用し、労働安全衛生に関する典型的な質問に正確かつ明確に答えることです。あなたはこの領域の質問を認識して対応し、最新の埋め込み知識を用いながら、親しみやすくプロフェッショナルなトーンを保たねばなりません。
+const SYSTEM_PROMPT = `あなたは労働安全衛生の専門家である労働安全コンサルタントとして機能する、AI搭載のウェブベース・チャットボットです。労働安全衛生に関するあらゆる質問に対して、専門的な知識と経験に基づいて回答します。
 
-指示:
+あなたの役割:
+- 労働安全コンサルタントとして、労働安全衛生全般に関する質問に専門的に回答する
+- 内部ナレッジベースは重要な情報源として積極的に活用する
+- 法令、事例、実務的な対策、予防措置など、幅広いトピックに対応する
+- 一般論、業界のベストプラクティス、法令の基本原則などを活用して回答する
 
-1. 回答の前に、ユーザーの質問を内部で必ずレビューし、意図を特定し、労働安全衛生のトピックとの関連性を確認すること。
+【最重要】ナレッジベースの取り扱いルール:
 
-2. 追加の知識モジュールが存在する場合はそれを参照し、最も網羅的かつ最新の回答を提供すること。
+1. **ナレッジベースの活用方法**:
+   - ユーザーの質問に対して、【参考ナレッジベース】が提供された場合、**必ずその内容を参考にして回答すること**
+   - ナレッジベースに記載されている情報（対策、手順、注意点など）は積極的に回答に含める
+   - ナレッジベースの内容を元に、専門家として分かりやすく説明する
 
-3. 質問が労働安全衛生の領域や現在の埋め込み知識の範囲外にある場合は、その旨を丁寧に伝え、関連する質問のみ扱うことを申し出ること。
+2. **デフォルトの回答方法（通常の質問の場合）**:
+   ユーザーが「〜について教えて」「〜の対策は」「〜の方法は」などと一般的な質問をした場合:
 
-4. 段階的に考えること：質問の分析 → 必要知識の特定 → 回答の検索・組み立て → 埋め込み知識との照合 → 返答の整形。
+   ✓ **許可される・推奨される回答**:
+   - ナレッジベースに記載されている対策、手順、内容を使って回答する
+   - ナレッジベースの情報を元に、自然な日本語で説明する
+   - 専門家として、ナレッジベースの内容を分かりやすく伝える
 
-5. 労働安全・衛生に関する妥当な質問には、常に明確かつ簡潔に答える努力を継続すること。
+   ✗ **絶対に禁止される行為**:
+   - ナレッジベース内の具体的な災害事例の詳細（「〇〇工事で」「〇〇作業中に、〜という災害が発生しました」などの固有名詞や事故の状況描写）を提示すること
+   - URL（https://...）を提示すること
+   - 「詳細:」「ナレッジベース参照」「参考:」などの表示をすること
 
-書式:
+   **重要**: ナレッジベースに「対策」「方法」「手順」などが記載されている場合は、それを積極的に活用して回答してください。ただし、災害事例の詳細描写は避けてください。
+
+3. **事例提示が許される条件（明示的な要求があった場合のみ）**:
+   ユーザーが以下のように**明示的に事例や具体例を要求**した場合のみ、ナレッジベースの具体的な災害事例の内容を提示できる:
+   - 「事例を示して」「事例はありますか」「事例を教えて」
+   - 「具体例を教えて」「実例を見せて」「実際の例を教えて」「災害事例を教えて」
+
+   この場合のみ、ナレッジベースの具体的な災害事例、URL、詳細な内容を提示すること。
+
+4. **質問の種類の判別**:
+   - 「対策を教えて」→ ナレッジベースの対策内容を使って回答（災害事例の詳細は提示しない）
+   - 「方法を教えて」→ ナレッジベースの方法を使って回答（災害事例の詳細は提示しない）
+   - 「どうすればいい」→ ナレッジベースの内容を参考に回答（災害事例の詳細は提示しない）
+   - 「事例を教えて」→ ナレッジベースの具体的な災害事例を提示（OK）
+
+5. **ナレッジベースがない場合**:
+   ナレッジベースに具体的な情報がない場合でも、労働安全衛生に関する質問であれば、必ず専門家としての一般論で回答すること。
+
+6. **絶対禁止事項**:
+   - 「ナレッジベースに情報がない」「詳細をご案内できません」などとナレッジベースの有無に言及すること
+   - 回答を拒否すること
+   - ナレッジベースはあくまで内部的な補助ツールであり、ユーザーには関係ない
+
+7. 労働安全衛生の領域外の質問（例：プログラミング、料理、旅行など）の場合のみ、丁寧にお断りし、労働安全衛生に関する質問のみ扱うことを伝える。
+
+回答のスタイル:
 
 - 自然で会話的な日本語で回答する。
-- 回答は簡潔に（2〜5文）。複雑な質問では必要に応じて箇条書きを用いる。
-- 特に一般的または重要な質問の場合は、その旨を明示し、該当する場合は予防的な安全ヒントも提示する。
+- **基本的には簡潔に（2〜5文程度）まとめる**が、ユーザーが「詳しく」「詳細に」「もっと教えて」などと明示的に詳細な説明を求めた場合は、包括的で詳細な説明を提供すること。
+- 詳細説明では、以下を含めることができる：
+  - 法令の具体的な条文や要件
+  - 実務的な手順やステップ
+  - 一般的な具体例やケーススタディ（ただし、ナレッジベースの災害事例の詳細は事例要求時のみ）
+  - 注意点やよくある誤解
+  - 関連する追加情報
+- 複雑な質問では箇条書き、番号付きリスト、段落分けなどを適切に使用する。
+- 重要な安全事項については、予防的な安全ヒントも積極的に提示する。
 
 重要:
-あなたは労働安全・衛生のためのウェブベースの顧客サポート・チャットボットです。回答の前に必ず質問を綿密に分析し、埋め込みナレッジベースを参照してください。関連する知識をすべて検討し終えるまで粘り強く対応し、その後に回答を提示してください。`;
+あなたは労働安全コンサルタントとして、労働安全衛生に関するあらゆる質問に対応します。【参考ナレッジベース】が提供された場合は、その内容を必ず参考にして回答してください。ただし、災害事例の具体的な詳細描写やURLは、ユーザーが明示的に事例を求めた場合のみ提示してください。`;
 
 // Knowledge base path
 const KNOWLEDGE_PATH = path.join(__dirname, '../data/knowledge.json');
+const JIREI_JSON_PATH = path.join(__dirname, '../data/jirei.json');
 
 // Initialize AI clients based on provider
 let aiClient;
@@ -92,6 +139,156 @@ if (AI_PROVIDER === 'google' && process.env.GOOGLE_API_KEY) {
   });
   aiConfigured = true;
   console.log('✓ Anthropic (Claude) を使用します');
+}
+
+// Jirei cases cache
+let jireiCasesCache = null;
+
+// Load jirei cases from JSON
+async function loadJireiCases() {
+  if (jireiCasesCache) {
+    return jireiCasesCache;
+  }
+
+  try {
+    const data = await fs.readFile(JIREI_JSON_PATH, 'utf8');
+    const jireiData = JSON.parse(data);
+    jireiCasesCache = jireiData.cases;
+    console.log(`✓ ${jireiCasesCache.length}件の事例データを読み込みました (Version: ${jireiData.version})`);
+    return jireiCasesCache;
+  } catch (error) {
+    console.error('Error loading jirei cases:', error);
+    return [];
+  }
+}
+
+// Extract keywords from query
+function extractKeywords(query) {
+  // Common keywords to extract for better search
+  const keywords = [];
+
+  // Safety-related keywords
+  const safetyTerms = ['熱中症', '転倒', '転落', '墜落', '挟まれ', '感電', '火災', '爆発', '中毒',
+    '酸欠', '騒音', '振動', '腰痛', '切創', '骨折', '火傷', '凍傷', '熱傷'];
+  const locationTerms = ['事務所', 'オフィス', '工場', '倉庫', '建設現場', '工事現場', '階段', '通路'];
+  const equipmentTerms = ['機械', '設備', 'フォークリフト', 'クレーン', 'はしご', '足場', '脚立',
+    'コンベア', 'プレス', '電動工具'];
+
+  const allTerms = [...safetyTerms, ...locationTerms, ...equipmentTerms];
+
+  // Extract matched terms
+  allTerms.forEach(term => {
+    if (query.includes(term)) {
+      keywords.push(term);
+    }
+  });
+
+  // Special case: If asking about office disasters, add common office-related keywords
+  if (query.includes('事務所') || query.includes('オフィス')) {
+    // Office environments commonly have these types of accidents
+    const officeRelatedKeywords = ['転倒', '転落', '階段', '腰痛'];
+    officeRelatedKeywords.forEach(kw => {
+      if (!keywords.includes(kw)) {
+        keywords.push(kw);
+      }
+    });
+  }
+
+  // If no specific terms found, add general query words (split by common particles)
+  if (keywords.length === 0) {
+    const generalWords = query
+      .replace(/[、。！？\s]/g, ' ')
+      .split(' ')
+      .filter(word => word.length >= 2);
+    keywords.push(...generalWords);
+  }
+
+  console.log(`[Search] Extracted keywords: ${keywords.join(', ')}`);
+  return keywords;
+}
+
+// Search jirei cases
+function searchJireiCases(cases, query) {
+  const keywords = extractKeywords(query);
+  const results = [];
+
+  cases.forEach(jcase => {
+    let relevance = 0;
+
+    keywords.forEach(keyword => {
+      // Check title match
+      if (jcase.title && jcase.title.includes(keyword)) {
+        relevance += 5;
+      }
+
+      // Check type match (disaster type)
+      if (jcase.type && jcase.type.includes(keyword)) {
+        relevance += 4;
+      }
+
+      // Check measure match
+      if (jcase.measure && jcase.measure.includes(keyword)) {
+        relevance += 3;
+      }
+
+      // Check cause match
+      if (jcase.cause && jcase.cause.includes(keyword)) {
+        relevance += 2;
+      }
+
+      // Check situation match
+      if (jcase.situation && jcase.situation.includes(keyword)) {
+        relevance += 1;
+      }
+
+      // Check equipment match
+      if (jcase.equipment && jcase.equipment.includes(keyword)) {
+        relevance += 2;
+      }
+    });
+
+    if (relevance > 0) {
+      results.push({ ...jcase, relevance });
+    }
+  });
+
+  // Sort by relevance
+  return results.sort((a, b) => b.relevance - a.relevance);
+}
+
+// Format jirei cases for AI context
+function formatJireiContext(jireiCases, userMessage = '') {
+  if (jireiCases.length === 0) {
+    return '';
+  }
+
+  // Check if user is asking for examples/cases
+  const isAskingForExamples = /事例|実例|具体例|ケース|example|case/i.test(userMessage);
+
+  let context = '\n\n【参考事例データベース】\n';
+
+  if (isAskingForExamples) {
+    // User explicitly asked for examples - show full details including URL
+    context += '※ユーザーが事例を求めているため、具体的な災害事例の詳細を提示してください。\n';
+    jireiCases.slice(0, 3).forEach((jcase, index) => {
+      context += `\n${index + 1}. ${jcase.title}\n`;
+      context += `   発生状況: ${jcase.situation.substring(0, 200)}...\n`;
+      context += `   原因: ${jcase.cause.substring(0, 150)}...\n`;
+      context += `   対策: ${jcase.measure.substring(0, 150)}...\n`;
+      context += `   詳細: ${jcase.url}\n`;
+    });
+  } else {
+    // General question - only provide measures/countermeasures, NOT disaster details
+    context += '※一般的な質問のため、これらの対策を参考に一般的なアドバイスをしてください。災害事例の詳細描写やURLは提示しないでください。\n';
+    context += `※マッチした事例数: ${jireiCases.length}件\n`;
+    jireiCases.slice(0, 8).forEach((jcase, index) => {
+      // Show full measure text without truncation for better AI understanding
+      const measure = jcase.measure.length > 300 ? jcase.measure.substring(0, 300) + '...' : jcase.measure;
+      context += `\n${index + 1}. ${measure}\n`;
+    });
+  }
+
+  return context;
 }
 
 // Load knowledge base
@@ -166,7 +363,7 @@ async function callAI(message, conversationHistory, knowledgeContext) {
   if (AI_PROVIDER === 'google') {
     // Google Gemini API
     const model = aiClient.getGenerativeModel({
-      model: 'gemini-2.5-pro',
+      model: 'gemini-2.5-flash',
       systemInstruction: SYSTEM_PROMPT
     });
 
@@ -243,14 +440,29 @@ app.post('/api/chat', async (req, res) => {
     const knowledge = await loadKnowledge();
     const relevantKnowledge = searchKnowledge(knowledge, message);
     const knowledgeContext = formatKnowledgeContext(relevantKnowledge);
+    console.log(`[Chat] Knowledge matched: ${relevantKnowledge.length} items`);
+
+    // Load and search jirei cases
+    const jireiCases = await loadJireiCases();
+    const relevantJirei = searchJireiCases(jireiCases, message);
+    const jireiContext = formatJireiContext(relevantJirei, message);
+    console.log(`[Chat] Jirei cases matched: ${relevantJirei.length} cases`);
+    if (relevantJirei.length > 0) {
+      console.log(`[Chat] Top 3 jirei titles: ${relevantJirei.slice(0, 3).map(j => j.title).join(' | ')}`);
+    }
+
+    // Combine contexts
+    const combinedContext = knowledgeContext + jireiContext;
 
     // Call AI API
-    const reply = await callAI(message, conversationHistory, knowledgeContext);
+    const reply = await callAI(message, conversationHistory, combinedContext);
 
     res.json({
       reply,
       knowledgeUsed: relevantKnowledge.length > 0,
       knowledgeCount: relevantKnowledge.length,
+      jireiUsed: relevantJirei.length > 0,
+      jireiCount: relevantJirei.length,
       provider: AI_PROVIDER
     });
 

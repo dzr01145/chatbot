@@ -23,11 +23,12 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'メイリオ', Meiryo, sans-serif;
     background: var(--background);
     color: var(--text-primary);
-    line-height: 1.6;
+    line-height: 1.4;
+    font-size: 14px;
 }
 
 .container {
-    max-width: 1400px;
+    max-width: 100%;
     margin: 0 auto;
     min-height: 100vh;
     display: flex;
@@ -37,33 +38,28 @@ body {
 .header {
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     color: white;
-    padding: 2rem;
+    padding: 0.75rem 1rem;
     text-align: center;
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow);
 }
 
 .header h1 {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+    margin: 0;
+    font-weight: 600;
 }
 
 .subtitle {
-    font-size: 1rem;
+    font-size: 0.85rem;
     opacity: 0.9;
 }
 
 .main-content {
-    display: grid;
-    grid-template-columns: 1fr 400px;
-    gap: 1.5rem;
-    padding: 1.5rem;
+    padding: 0.75rem;
     flex: 1;
-}
-
-@media (max-width: 1024px) {
-    .main-content {
-        grid-template-columns: 1fr;
-    }
+    max-width: 100%;
+    margin: 0 auto;
+    width: 100%;
 }
 
 /* Chat Section */
@@ -79,9 +75,9 @@ body {
 .chat-container {
     flex: 1;
     overflow-y: auto;
-    padding: 1.5rem;
+    padding: 1rem;
     min-height: 400px;
-    max-height: calc(100vh - 350px);
+    max-height: calc(100vh - 200px);
 }
 
 .welcome-message {
@@ -150,10 +146,12 @@ body {
 }
 
 .message-content {
-    max-width: 70%;
-    padding: 1rem 1.25rem;
-    border-radius: 12px;
+    max-width: 95%;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
     word-wrap: break-word;
+    line-height: 1.5;
+    font-size: 14px;
 }
 
 .message.user .message-content {
@@ -169,11 +167,41 @@ body {
 }
 
 .message-content p {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.4rem;
 }
 
 .message-content p:last-child {
     margin-bottom: 0;
+}
+
+.message-content a {
+    color: var(--primary-color);
+    text-decoration: underline;
+    word-break: break-word;
+}
+
+.message-content a:hover {
+    color: var(--primary-dark);
+    text-decoration: none;
+}
+
+.message-content ul,
+.message-content ol {
+    margin: 0.5rem 0;
+    padding-left: 1.25rem;
+}
+
+.message-content li {
+    margin-bottom: 0.3rem;
+    line-height: 1.4;
+}
+
+.message-content h1,
+.message-content h2,
+.message-content h3 {
+    margin: 1rem 0 0.5rem 0;
+    color: var(--text-primary);
+    font-weight: 700;
 }
 
 .loading-indicator {
@@ -271,136 +299,64 @@ body {
     opacity: 0.5;
     cursor: not-allowed;
 }
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    body {
+        font-size: 14px;
+    }
 
-/* Knowledge Section */
-.knowledge-section {
-    background: var(--surface);
-    border-radius: 12px;
-    box-shadow: var(--shadow);
-    padding: 1.5rem;
-    max-height: calc(100vh - 250px);
-    overflow-y: auto;
-}
+    .header h1 {
+        font-size: 1.1rem;
+    }
 
-.knowledge-section h3 {
-    color: var(--primary-color);
-    margin-bottom: 1rem;
-    font-size: 1.25rem;
-}
+    .main-content {
+        padding: 0.5rem;
+    }
 
-.knowledge-section h4 {
-    color: var(--text-primary);
-    margin: 1.5rem 0 1rem;
-    font-size: 1rem;
-}
+    .message-content {
+        max-width: 98%;
+        font-size: 14px;
+        line-height: 1.5;
+        padding: 0.75rem;
+    }
 
-.knowledge-stats {
-    background: var(--background);
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-}
+    .message-content p {
+        margin-bottom: 0.4rem;
+    }
 
-.knowledge-stats p {
-    margin: 0.25rem 0;
-    font-size: 0.9rem;
-}
+    .message-content ul,
+    .message-content ol {
+        padding-left: 1.25rem;
+        margin: 0.5rem 0;
+    }
 
-.add-knowledge-form {
-    margin-bottom: 2rem;
-}
+    .message-content li {
+        margin-bottom: 0.3rem;
+        line-height: 1.4;
+    }
 
-.form-group {
-    margin-bottom: 1rem;
-}
+    .message-content h1,
+    .message-content h2,
+    .message-content h3 {
+        font-size: 1rem;
+        margin: 0.75rem 0 0.4rem 0;
+    }
 
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    font-size: 0.9rem;
-}
+    .message-content strong {
+        font-weight: 700;
+    }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 0.9rem;
-    font-family: inherit;
-    transition: border-color 0.2s;
-}
+    .message-content a {
+        word-break: break-all;
+    }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: var(--primary-color);
-}
+    #userInput {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
 
-.add-btn {
-    width: 100%;
-    padding: 0.75rem;
-    background: var(--secondary-color);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.add-btn:hover {
-    background: #059669;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-}
-
-.knowledge-list {
-    margin-top: 1.5rem;
-}
-
-.knowledge-item {
-    background: var(--background);
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 0.75rem;
-    border-left: 3px solid var(--primary-color);
-}
-
-.knowledge-item-category {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-}
-
-.knowledge-item-question {
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: var(--text-primary);
-}
-
-.knowledge-item-answer {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    margin-bottom: 0.5rem;
-}
-
-.knowledge-item-keywords {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.keyword-tag {
-    padding: 0.25rem 0.5rem;
-    background: var(--primary-color);
-    color: white;
-    border-radius: 4px;
-    font-size: 0.75rem;
+    .chat-container {
+        padding: 0.75rem;
+    }
 }
 
 /* Footer */
