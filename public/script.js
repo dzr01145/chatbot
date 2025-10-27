@@ -233,7 +233,16 @@ function autoLinkUrls(text) {
     // First, handle Markdown-style links: [text](url)
     const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
     text = text.replace(markdownLinkRegex, (match, linkText, url) => {
-        return `<a href="${url.trim()}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+        const trimmedUrl = url.trim();
+        const trimmedText = linkText.trim();
+
+        // If linkText is the same as URL, just show clickable URL
+        if (trimmedText === trimmedUrl) {
+            return `<a href="${trimmedUrl}" target="_blank" rel="noopener noreferrer">${trimmedUrl}</a>`;
+        }
+
+        // Otherwise, show linkText followed by clickable URL
+        return `${trimmedText}<br><a href="${trimmedUrl}" target="_blank" rel="noopener noreferrer" class="url-link">${trimmedUrl}</a>`;
     });
 
     // Then, handle plain URLs (http, https) that aren't already in <a> tags

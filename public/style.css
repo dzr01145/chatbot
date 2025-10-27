@@ -185,6 +185,17 @@ body {
     text-decoration: none;
 }
 
+.message-content a.url-link {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    display: inline-block;
+    margin-top: 0.2rem;
+}
+
+.message-content a.url-link:hover {
+    color: var(--primary-color);
+}
+
 .message-content ul,
 .message-content ol {
     margin: 0.5rem 0;
