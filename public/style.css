@@ -57,13 +57,13 @@ body {
     line-height: 1.3;
 }
 
-/* Main Content - モバイルは1カラム */
+/* Main Content - チャット専用のシンプルレイアウト */
 .main-content {
     display: flex;
     flex-direction: column;
-    padding: 10px;
-    gap: 10px;
+    padding: 0;
     flex: 1;
+    max-width: 100%;
 }
 
 /* Chat Section */
@@ -71,17 +71,14 @@ body {
     display: flex;
     flex-direction: column;
     background: var(--surface);
-    border-radius: 8px;
-    box-shadow: var(--shadow);
     overflow: hidden;
-    min-height: 400px;
+    flex: 1;
 }
 
 .chat-container {
     flex: 1;
     overflow-y: auto;
-    padding: 12px;
-    min-height: 300px;
+    padding: 15px;
 }
 
 .welcome-message {
@@ -160,7 +157,7 @@ body {
     max-width: 85%;
     padding: 10px 12px;
     border-radius: 16px;
-    font-size: 13px; /* モバイル: 小さいフォント */
+    font-size: 14px; /* モバイル */
     line-height: 1.4;
     word-wrap: break-word;
 }
@@ -295,7 +292,7 @@ body {
     border: 1px solid var(--border);
     border-radius: 20px;
     font-family: inherit;
-    font-size: 13px; /* モバイル: 小さいフォント */
+    font-size: 14px; /* モバイル */
     resize: none;
     max-height: 100px;
     outline: none;
@@ -329,202 +326,6 @@ body {
     cursor: not-allowed;
 }
 
-/* Knowledge Section */
-.knowledge-section {
-    background: var(--surface);
-    border-radius: 8px;
-    box-shadow: var(--shadow);
-    padding: 12px;
-}
-
-.knowledge-section h3 {
-    font-size: 15px;
-    color: var(--primary-color);
-    margin-bottom: 10px;
-    font-weight: 600;
-}
-
-.knowledge-section h4 {
-    font-size: 13px;
-    margin: 12px 0 8px;
-    color: var(--text-primary);
-    font-weight: 600;
-}
-
-.knowledge-stats {
-    background: var(--background);
-    padding: 10px;
-    border-radius: 6px;
-    margin-bottom: 12px;
-}
-
-.knowledge-stats p {
-    font-size: 12px;
-    margin: 4px 0;
-    color: var(--text-secondary);
-}
-
-.knowledge-stats strong {
-    color: var(--text-primary);
-}
-
-/* Form */
-.form-group {
-    margin-bottom: 10px;
-}
-
-.form-group label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    margin-bottom: 4px;
-    color: var(--text-primary);
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 12px;
-    outline: none;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-    border-color: var(--primary-color);
-}
-
-.form-group textarea {
-    resize: vertical;
-}
-
-/* Knowledge List */
-.knowledge-list {
-    margin-top: 12px;
-    max-height: 400px;
-    overflow-y: auto;
-}
-
-.knowledge-item {
-    background: var(--background);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px;
-    margin-bottom: 8px;
-}
-
-.knowledge-item-category {
-    font-size: 10px;
-    color: var(--primary-color);
-    font-weight: 600;
-    margin-bottom: 4px;
-    text-transform: uppercase;
-}
-
-.knowledge-item-question {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-}
-
-.knowledge-item-answer {
-    font-size: 11px;
-    color: var(--text-secondary);
-    margin-bottom: 6px;
-    line-height: 1.4;
-}
-
-.knowledge-item-keywords {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-}
-
-.keyword-tag {
-    display: inline-block;
-    background: var(--primary-color);
-    color: white;
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 10px;
-}
-
-/* Knowledge Filters */
-.knowledge-filters {
-    background: var(--background);
-    padding: 10px;
-    border-radius: 6px;
-    margin-bottom: 10px;
-}
-
-.knowledge-filters .form-group {
-    margin-bottom: 8px;
-}
-
-.knowledge-filters .form-group:last-child {
-    margin-bottom: 0;
-}
-
-/* Pagination */
-.pagination {
-    margin-top: 10px;
-    padding: 10px;
-    background: var(--background);
-    border-radius: 6px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    align-items: center;
-}
-
-.pagination-info {
-    font-size: 11px;
-    color: var(--text-secondary);
-    text-align: center;
-}
-
-.pagination-buttons {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.pagination-btn {
-    padding: 6px 12px;
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 11px;
-    cursor: pointer;
-    transition: background 0.2s;
-    font-weight: 600;
-}
-
-.pagination-btn:hover:not(:disabled) {
-    background: var(--primary-dark);
-}
-
-.pagination-btn:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-    opacity: 0.6;
-}
-
-.page-info {
-    font-size: 12px;
-    color: var(--text-primary);
-    font-weight: 600;
-    min-width: 60px;
-    text-align: center;
-}
-
 /* Footer */
 .footer {
     background: var(--surface);
@@ -536,35 +337,31 @@ body {
 }
 
 /* Scrollbar */
-.chat-container::-webkit-scrollbar,
-.knowledge-list::-webkit-scrollbar {
+.chat-container::-webkit-scrollbar {
     width: 6px;
 }
 
-.chat-container::-webkit-scrollbar-track,
-.knowledge-list::-webkit-scrollbar-track {
+.chat-container::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.chat-container::-webkit-scrollbar-thumb,
-.knowledge-list::-webkit-scrollbar-thumb {
+.chat-container::-webkit-scrollbar-thumb {
     background: #ccc;
     border-radius: 3px;
 }
 
-.chat-container::-webkit-scrollbar-thumb:hover,
-.knowledge-list::-webkit-scrollbar-thumb:hover {
+.chat-container::-webkit-scrollbar-thumb:hover {
     background: #999;
 }
 
-/* タブレット以上: より大きいフォント、2カラムレイアウト */
+/* タブレット以上: より大きいフォント */
 @media (min-width: 768px) {
     body {
-        font-size: 14px;
+        font-size: 15px;
     }
 
     .container {
-        max-width: 1400px;
+        max-width: 800px;
         margin: 0 auto;
     }
 
@@ -581,19 +378,12 @@ body {
         font-size: 14px;
     }
 
-    .main-content {
-        display: grid;
-        grid-template-columns: 1fr 350px;
-        padding: 1.5rem;
-        gap: 1.5rem;
-    }
-
     .chat-container {
         padding: 1.5rem;
     }
 
     .message-content {
-        font-size: 14px;
+        font-size: 15px;
         padding: 12px 14px;
     }
 
@@ -602,7 +392,7 @@ body {
     }
 
     .input-wrapper textarea {
-        font-size: 14px;
+        font-size: 15px;
         padding: 12px 14px;
     }
 
@@ -611,62 +401,8 @@ body {
         height: 44px;
     }
 
-    .knowledge-section {
-        padding: 1.5rem;
-    }
-
-    .knowledge-section h3 {
-        font-size: 18px;
-        margin-bottom: 12px;
-    }
-
-    .knowledge-section h4 {
-        font-size: 15px;
-    }
-
-    .knowledge-stats p,
-    .form-group label,
-    .form-group input,
-    .form-group select,
-    .form-group textarea {
-        font-size: 13px;
-    }
-
-    .add-btn {
-        font-size: 14px;
-    }
-
-    .knowledge-item-question {
-        font-size: 13px;
-    }
-
-    .knowledge-item-answer {
-        font-size: 12px;
-    }
-
     .footer {
         padding: 1rem;
         font-size: 12px;
-    }
-
-    /* Pagination and filters - larger font for tablets+ */
-    .pagination-info {
-        font-size: 12px;
-    }
-
-    .pagination-btn {
-        font-size: 12px;
-        padding: 8px 14px;
-    }
-
-    .page-info {
-        font-size: 13px;
-    }
-}
-
-/* PC: さらに大きいレイアウト */
-@media (min-width: 1200px) {
-    .main-content {
-        grid-template-columns: 1fr 400px;
     }
 }
