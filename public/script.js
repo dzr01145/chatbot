@@ -230,9 +230,15 @@ function formatInlineMarkdown(text) {
 
 // Auto-link URLs in text
 function autoLinkUrls(text) {
-    // Match URLs (http, https)
+    // First, handle Markdown-style links: [text](url)
+    const markdownLinkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    text = text.replace(markdownLinkRegex, (match, linkText, url) => {
+        return `<a href="${url.trim()}" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+    });
+
+    // Then, handle plain URLs (http, https) that aren't already in <a> tags
     const urlRegex = /(https?:\/\/[^\s<]+)/g;
-    return text.replace(urlRegex, (url) => {
+    text = text.replace(urlRegex, (url) => {
         // Clean up trailing punctuation that might not be part of the URL
         let cleanUrl = url;
         let trailing = '';
@@ -247,6 +253,8 @@ function autoLinkUrls(text) {
 
         return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>${trailing}`;
     });
+
+    return text;
 }
 
 // Show loading indicator
