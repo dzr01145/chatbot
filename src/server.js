@@ -204,13 +204,49 @@ function getLawIdByName(lawName) {
   return null;
 }
 
+// 日本語クエリを単語に分割する関数
+function splitJapaneseQuery(query) {
+  const queryLower = query.toLowerCase();
+
+  // まずスペースやカンマで分割
+  let words = queryLower.split(/[\s,、]+/).filter(word => word.length > 1);
+
+  // 各単語が長すぎる場合（4文字以上）、2-3文字のN-gramに分割して追加
+  const expandedWords = [];
+  words.forEach(word => {
+    expandedWords.push(word); // 元の単語を追加
+
+    if (word.length >= 4) {
+      // 2文字のN-gramを追加
+      for (let i = 0; i <= word.length - 2; i++) {
+        const bigram = word.substring(i, i + 2);
+        if (!expandedWords.includes(bigram)) {
+          expandedWords.push(bigram);
+        }
+      }
+
+      // 3文字のN-gramを追加（長い単語の場合）
+      if (word.length >= 5) {
+        for (let i = 0; i <= word.length - 3; i++) {
+          const trigram = word.substring(i, i + 3);
+          if (!expandedWords.includes(trigram)) {
+            expandedWords.push(trigram);
+          }
+        }
+      }
+    }
+  });
+
+  return expandedWords;
+}
+
 // Search knowledge base
 function searchKnowledge(knowledge, query) {
   const results = [];
   const queryLower = query.toLowerCase();
 
-  // クエリを単語に分割（スペースやカンマで区切る）
-  const queryWords = queryLower.split(/[\s,、]+/).filter(word => word.length > 1);
+  // クエリを単語に分割（日本語対応の分割）
+  const queryWords = splitJapaneseQuery(query);
 
   knowledge.categories.forEach(category => {
     category.items.forEach(item => {
