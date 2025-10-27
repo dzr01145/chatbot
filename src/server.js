@@ -117,6 +117,7 @@ const SYSTEM_PROMPT = `あなたは労働安全衛生の専門家である労働
 
 // Knowledge base path
 const KNOWLEDGE_PATH = path.join(__dirname, '../data/knowledge.json');
+const JIREI_JSON_PATH = path.join(__dirname, '../data/jirei.json');
 
 // Initialize AI clients based on provider
 let aiClient;
@@ -138,6 +139,96 @@ if (AI_PROVIDER === 'google' && process.env.GOOGLE_API_KEY) {
   });
   aiConfigured = true;
   console.log('✓ Anthropic (Claude) を使用します');
+}
+
+// Jirei cases cache
+let jireiCasesCache = null;
+
+// Load jirei cases from JSON
+async function loadJireiCases() {
+  if (jireiCasesCache) {
+    return jireiCasesCache;
+  }
+
+  try {
+    const data = await fs.readFile(JIREI_JSON_PATH, 'utf8');
+    const jireiData = JSON.parse(data);
+    jireiCasesCache = jireiData.cases;
+    console.log(`✓ ${jireiCasesCache.length}件の事例データを読み込みました (Version: ${jireiData.version})`);
+    return jireiCasesCache;
+  } catch (error) {
+    console.error('Error loading jirei cases:', error);
+    return [];
+  }
+}
+
+// Search jirei cases
+function searchJireiCases(cases, query) {
+  const queryLower = query.toLowerCase();
+  const results = [];
+
+  cases.forEach(jcase => {
+    let relevance = 0;
+
+    // Check title match
+    if (jcase.title && jcase.title.toLowerCase().includes(queryLower)) {
+      relevance += 3;
+    }
+
+    // Check cause match
+    if (jcase.cause && jcase.cause.toLowerCase().includes(queryLower)) {
+      relevance += 2;
+    }
+
+    // Check measure match
+    if (jcase.measure && jcase.measure.toLowerCase().includes(queryLower)) {
+      relevance += 2;
+    }
+
+    // Check situation match
+    if (jcase.situation && jcase.situation.toLowerCase().includes(queryLower)) {
+      relevance += 1;
+    }
+
+    if (relevance > 0) {
+      results.push({ ...jcase, relevance });
+    }
+  });
+
+  // Sort by relevance
+  return results.sort((a, b) => b.relevance - a.relevance);
+}
+
+// Format jirei cases for AI context
+function formatJireiContext(jireiCases, userMessage = '') {
+  if (jireiCases.length === 0) {
+    return '';
+  }
+
+  // Check if user is asking for examples/cases
+  const isAskingForExamples = /事例|実例|具体例|ケース|example|case/i.test(userMessage);
+
+  let context = '\n\n【参考事例データベース】\n';
+
+  if (isAskingForExamples) {
+    // User explicitly asked for examples - show full details including URL
+    context += '※ユーザーが事例を求めているため、具体的な災害事例の詳細を提示してください。\n';
+    jireiCases.slice(0, 3).forEach((jcase, index) => {
+      context += `\n${index + 1}. ${jcase.title}\n`;
+      context += `   発生状況: ${jcase.situation.substring(0, 200)}...\n`;
+      context += `   原因: ${jcase.cause.substring(0, 150)}...\n`;
+      context += `   対策: ${jcase.measure.substring(0, 150)}...\n`;
+      context += `   詳細: ${jcase.url}\n`;
+    });
+  } else {
+    // General question - only provide measures/countermeasures, NOT disaster details
+    context += '※一般的な質問のため、対策のみを活用し、災害事例の詳細描写やURLは提示しないでください。\n';
+    jireiCases.slice(0, 5).forEach((jcase, index) => {
+      context += `\n${index + 1}. 対策: ${jcase.measure.substring(0, 200)}\n`;
+    });
+  }
+
+  return context;
 }
 
 // Load knowledge base
@@ -290,13 +381,23 @@ app.post('/api/chat', async (req, res) => {
     const relevantKnowledge = searchKnowledge(knowledge, message);
     const knowledgeContext = formatKnowledgeContext(relevantKnowledge);
 
+    // Load and search jirei cases
+    const jireiCases = await loadJireiCases();
+    const relevantJirei = searchJireiCases(jireiCases, message);
+    const jireiContext = formatJireiContext(relevantJirei, message);
+
+    // Combine contexts
+    const combinedContext = knowledgeContext + jireiContext;
+
     // Call AI API
-    const reply = await callAI(message, conversationHistory, knowledgeContext);
+    const reply = await callAI(message, conversationHistory, combinedContext);
 
     res.json({
       reply,
       knowledgeUsed: relevantKnowledge.length > 0,
       knowledgeCount: relevantKnowledge.length,
+      jireiUsed: relevantJirei.length > 0,
+      jireiCount: relevantJirei.length,
       provider: AI_PROVIDER
     });
 
