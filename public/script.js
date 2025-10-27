@@ -4,9 +4,8 @@ const API_BASE = window.location.origin;
 // Conversation history
 let conversationHistory = [];
 
-// Load knowledge base on page load
+// Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
-    loadKnowledgeBase();
     setupInputHandlers();
     checkApiHealth();
 });
@@ -164,30 +163,90 @@ function displayMessage(text, sender, knowledgeUsed = false) {
     scrollToBottom();
 }
 
-// Format message (convert newlines to paragraphs, handle lists)
+// Format message (convert markdown-like syntax to HTML with auto-linked URLs)
 function formatMessage(text) {
+    // First, convert URLs to clickable links
+    text = autoLinkUrls(text);
+
     // Split by double newlines for paragraphs
     let formatted = text
         .split('\n\n')
         .map(para => {
-            // Check if it's a list (starts with • or -)
-            if (para.includes('\n•') || para.includes('\n-')) {
+            // Check if it's a numbered list (starts with 1., 2., etc.)
+            if (/^\d+\.\s/.test(para.trim())) {
                 const lines = para.split('\n');
                 const listItems = lines
-                    .filter(line => line.trim().startsWith('•') || line.trim().startsWith('-'))
+                    .filter(line => /^\d+\.\s/.test(line.trim()))
                     .map(line => {
-                        const content = line.replace(/^[•\-]\s*/, '').trim();
-                        return `<li>${content}</li>`;
+                        const content = line.replace(/^\d+\.\s*/, '').trim();
+                        return `<li>${formatInlineMarkdown(content)}</li>`;
+                    })
+                    .join('');
+                return `<ol>${listItems}</ol>`;
+            }
+            // Check if it's a bullet list (starts with • or - or *)
+            else if (para.includes('\n•') || para.includes('\n-') || para.includes('\n*')) {
+                const lines = para.split('\n');
+                const listItems = lines
+                    .filter(line => {
+                        const trimmed = line.trim();
+                        return trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*');
+                    })
+                    .map(line => {
+                        const content = line.replace(/^[•\-\*]\s*/, '').trim();
+                        return `<li>${formatInlineMarkdown(content)}</li>`;
                     })
                     .join('');
                 return `<ul>${listItems}</ul>`;
-            } else {
-                return `<p>${para.replace(/\n/g, '<br>')}</p>`;
+            }
+            // Check if it's a heading (starts with ## or ###)
+            else if (para.trim().startsWith('##')) {
+                const level = para.match(/^#+/)[0].length;
+                const content = para.replace(/^#+\s*/, '').trim();
+                return `<h${level}>${formatInlineMarkdown(content)}</h${level}>`;
+            }
+            // Regular paragraph
+            else {
+                return `<p>${formatInlineMarkdown(para.replace(/\n/g, '<br>'))}</p>`;
             }
         })
         .join('');
 
     return formatted;
+}
+
+// Format inline markdown (bold, links, etc.)
+function formatInlineMarkdown(text) {
+    // Bold: **text** or __text__
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+    // Italic: *text* or _text_ (but not part of URLs)
+    text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    text = text.replace(/\b_(.+?)_\b/g, '<em>$1</em>');
+
+    return text;
+}
+
+// Auto-link URLs in text
+function autoLinkUrls(text) {
+    // Match URLs (http, https)
+    const urlRegex = /(https?:\/\/[^\s<]+)/g;
+    return text.replace(urlRegex, (url) => {
+        // Clean up trailing punctuation that might not be part of the URL
+        let cleanUrl = url;
+        let trailing = '';
+
+        // Check for trailing punctuation
+        const trailingPunctRegex = /([.,;:!?)]*)$/;
+        const match = cleanUrl.match(trailingPunctRegex);
+        if (match && match[1]) {
+            trailing = match[1];
+            cleanUrl = cleanUrl.slice(0, -trailing.length);
+        }
+
+        return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>${trailing}`;
+    });
 }
 
 // Show loading indicator
@@ -225,126 +284,3 @@ function scrollToBottom() {
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// Load knowledge base
-async function loadKnowledgeBase() {
-    try {
-        const response = await fetch(`${API_BASE}/api/knowledge`);
-        const knowledge = await response.json();
-
-        displayKnowledgeStats(knowledge);
-        populateCategorySelect(knowledge);
-        displayKnowledgeList(knowledge);
-
-    } catch (error) {
-        console.error('Error loading knowledge base:', error);
-        document.getElementById('knowledgeStats').innerHTML = '<p>ナレッジベースの読み込みに失敗しました</p>';
-    }
-}
-
-// Display knowledge stats
-function displayKnowledgeStats(knowledge) {
-    const statsDiv = document.getElementById('knowledgeStats');
-    const totalCategories = knowledge.categories.length;
-    const totalItems = knowledge.categories.reduce((sum, cat) => sum + cat.items.length, 0);
-
-    statsDiv.innerHTML = `
-        <p><strong>カテゴリー数:</strong> ${totalCategories}</p>
-        <p><strong>ナレッジ項目数:</strong> ${totalItems}</p>
-        <p><strong>最終更新:</strong> ${knowledge.metadata.last_updated || 'N/A'}</p>
-    `;
-}
-
-// Populate category select
-function populateCategorySelect(knowledge) {
-    const select = document.getElementById('categorySelect');
-    select.innerHTML = '<option value="">選択してください</option>';
-
-    knowledge.categories.forEach(category => {
-        const option = document.createElement('option');
-        option.value = category.id;
-        option.textContent = category.name;
-        select.appendChild(option);
-    });
-}
-
-// Display knowledge list
-function displayKnowledgeList(knowledge) {
-    const listDiv = document.getElementById('knowledgeList');
-    listDiv.innerHTML = '';
-
-    if (!knowledge.categories || knowledge.categories.length === 0) {
-        listDiv.innerHTML = '<p>ナレッジがありません</p>';
-        return;
-    }
-
-    knowledge.categories.forEach(category => {
-        category.items.forEach(item => {
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'knowledge-item';
-
-            const keywords = item.keywords.map(kw =>
-                `<span class="keyword-tag">${kw}</span>`
-            ).join('');
-
-            itemDiv.innerHTML = `
-                <div class="knowledge-item-category">${category.name}</div>
-                <div class="knowledge-item-question">${item.question}</div>
-                <div class="knowledge-item-answer">${item.answer.substring(0, 100)}${item.answer.length > 100 ? '...' : ''}</div>
-                <div class="knowledge-item-keywords">${keywords}</div>
-            `;
-
-            listDiv.appendChild(itemDiv);
-        });
-    });
-}
-
-// Add knowledge
-async function addKnowledge(event) {
-    event.preventDefault();
-
-    const categoryId = document.getElementById('categorySelect').value;
-    const question = document.getElementById('questionInput').value.trim();
-    const answer = document.getElementById('answerInput').value.trim();
-    const keywordsStr = document.getElementById('keywordsInput').value.trim();
-
-    if (!categoryId || !question || !answer || !keywordsStr) {
-        alert('すべての項目を入力してください');
-        return;
-    }
-
-    const keywords = keywordsStr.split(',').map(k => k.trim()).filter(k => k);
-
-    try {
-        const response = await fetch(`${API_BASE}/api/knowledge`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                categoryId,
-                question,
-                answer,
-                keywords
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'ナレッジの追加に失敗しました');
-        }
-
-        const data = await response.json();
-
-        // Clear form
-        document.getElementById('addKnowledgeForm').reset();
-
-        // Reload knowledge base
-        await loadKnowledgeBase();
-
-        alert('ナレッジが追加されました！');
-
-    } catch (error) {
-        console.error('Error adding knowledge:', error);
-        alert(`エラー: ${error.message}`);
-    }
-}

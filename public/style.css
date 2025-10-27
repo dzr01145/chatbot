@@ -53,17 +53,11 @@ body {
 }
 
 .main-content {
-    display: grid;
-    grid-template-columns: 1fr 400px;
-    gap: 1.5rem;
     padding: 1.5rem;
     flex: 1;
-}
-
-@media (max-width: 1024px) {
-    .main-content {
-        grid-template-columns: 1fr;
-    }
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
 }
 
 /* Chat Section */
@@ -176,6 +170,35 @@ body {
     margin-bottom: 0;
 }
 
+.message-content a {
+    color: var(--primary-color);
+    text-decoration: underline;
+    word-break: break-word;
+}
+
+.message-content a:hover {
+    color: var(--primary-dark);
+    text-decoration: none;
+}
+
+.message-content ul,
+.message-content ol {
+    margin: 0.75rem 0;
+    padding-left: 1.5rem;
+}
+
+.message-content li {
+    margin-bottom: 0.5rem;
+}
+
+.message-content h1,
+.message-content h2,
+.message-content h3 {
+    margin: 1rem 0 0.5rem 0;
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
 .loading-indicator {
     display: inline-flex;
     gap: 4px;
@@ -271,136 +294,68 @@ body {
     opacity: 0.5;
     cursor: not-allowed;
 }
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    body {
+        font-size: 16px; /* Increase base font size for mobile */
+    }
 
-/* Knowledge Section */
-.knowledge-section {
-    background: var(--surface);
-    border-radius: 12px;
-    box-shadow: var(--shadow);
-    padding: 1.5rem;
-    max-height: calc(100vh - 250px);
-    overflow-y: auto;
-}
+    .header h1 {
+        font-size: 1.5rem;
+    }
 
-.knowledge-section h3 {
-    color: var(--primary-color);
-    margin-bottom: 1rem;
-    font-size: 1.25rem;
-}
+    .main-content {
+        padding: 1rem;
+    }
 
-.knowledge-section h4 {
-    color: var(--text-primary);
-    margin: 1.5rem 0 1rem;
-    font-size: 1rem;
-}
+    .message-content {
+        max-width: 90%;
+        font-size: 1.05rem; /* Larger text for better readability */
+        line-height: 1.7;
+        padding: 1rem;
+    }
 
-.knowledge-stats {
-    background: var(--background);
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-}
+    .message-content p {
+        margin-bottom: 0.75rem;
+    }
 
-.knowledge-stats p {
-    margin: 0.25rem 0;
-    font-size: 0.9rem;
-}
+    .message-content ul,
+    .message-content ol {
+        padding-left: 1.5rem;
+        margin: 0.75rem 0;
+    }
 
-.add-knowledge-form {
-    margin-bottom: 2rem;
-}
+    .message-content li {
+        margin-bottom: 0.5rem;
+    }
 
-.form-group {
-    margin-bottom: 1rem;
-}
+    .message-content h1,
+    .message-content h2,
+    .message-content h3 {
+        font-size: 1.15rem;
+        margin: 1rem 0 0.5rem 0;
+    }
 
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    font-size: 0.9rem;
-}
+    .message-content strong {
+        font-weight: 700;
+    }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 0.9rem;
-    font-family: inherit;
-    transition: border-color 0.2s;
-}
+    .message-content a {
+        word-break: break-all;
+    }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: var(--primary-color);
-}
+    #userInput {
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
 
-.add-btn {
-    width: 100%;
-    padding: 0.75rem;
-    background: var(--secondary-color);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
+    .example-btn {
+        font-size: 1rem;
+        padding: 1rem;
+    }
 
-.add-btn:hover {
-    background: #059669;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-}
-
-.knowledge-list {
-    margin-top: 1.5rem;
-}
-
-.knowledge-item {
-    background: var(--background);
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 0.75rem;
-    border-left: 3px solid var(--primary-color);
-}
-
-.knowledge-item-category {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-}
-
-.knowledge-item-question {
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: var(--text-primary);
-}
-
-.knowledge-item-answer {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    margin-bottom: 0.5rem;
-}
-
-.knowledge-item-keywords {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.keyword-tag {
-    padding: 0.25rem 0.5rem;
-    background: var(--primary-color);
-    color: white;
-    border-radius: 4px;
-    font-size: 0.75rem;
+    .chat-container {
+        padding: 1rem;
+    }
 }
 
 /* Footer */
