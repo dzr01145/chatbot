@@ -303,7 +303,7 @@ async function callAI(message, conversationHistory, knowledgeContext) {
   if (AI_PROVIDER === 'google') {
     // Google Gemini API
     const model = aiClient.getGenerativeModel({
-      model: 'gemini-2.5-pro',
+      model: 'gemini-2.5-flash',
       systemInstruction: SYSTEM_PROMPT
     });
 
