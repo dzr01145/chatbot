@@ -162,33 +162,90 @@ async function loadJireiCases() {
   }
 }
 
+// Extract keywords from query
+function extractKeywords(query) {
+  // Common keywords to extract for better search
+  const keywords = [];
+
+  // Safety-related keywords
+  const safetyTerms = ['熱中症', '転倒', '転落', '墜落', '挟まれ', '感電', '火災', '爆発', '中毒',
+    '酸欠', '騒音', '振動', '腰痛', '切創', '骨折', '火傷', '凍傷', '熱傷'];
+  const locationTerms = ['事務所', 'オフィス', '工場', '倉庫', '建設現場', '工事現場', '階段', '通路'];
+  const equipmentTerms = ['機械', '設備', 'フォークリフト', 'クレーン', 'はしご', '足場', '脚立',
+    'コンベア', 'プレス', '電動工具'];
+
+  const allTerms = [...safetyTerms, ...locationTerms, ...equipmentTerms];
+
+  // Extract matched terms
+  allTerms.forEach(term => {
+    if (query.includes(term)) {
+      keywords.push(term);
+    }
+  });
+
+  // Special case: If asking about office disasters, add common office-related keywords
+  if (query.includes('事務所') || query.includes('オフィス')) {
+    // Office environments commonly have these types of accidents
+    const officeRelatedKeywords = ['転倒', '転落', '階段', '腰痛'];
+    officeRelatedKeywords.forEach(kw => {
+      if (!keywords.includes(kw)) {
+        keywords.push(kw);
+      }
+    });
+  }
+
+  // If no specific terms found, add general query words (split by common particles)
+  if (keywords.length === 0) {
+    const generalWords = query
+      .replace(/[、。！？\s]/g, ' ')
+      .split(' ')
+      .filter(word => word.length >= 2);
+    keywords.push(...generalWords);
+  }
+
+  console.log(`[Search] Extracted keywords: ${keywords.join(', ')}`);
+  return keywords;
+}
+
 // Search jirei cases
 function searchJireiCases(cases, query) {
-  const queryLower = query.toLowerCase();
+  const keywords = extractKeywords(query);
   const results = [];
 
   cases.forEach(jcase => {
     let relevance = 0;
 
-    // Check title match
-    if (jcase.title && jcase.title.toLowerCase().includes(queryLower)) {
-      relevance += 3;
-    }
+    keywords.forEach(keyword => {
+      // Check title match
+      if (jcase.title && jcase.title.includes(keyword)) {
+        relevance += 5;
+      }
 
-    // Check cause match
-    if (jcase.cause && jcase.cause.toLowerCase().includes(queryLower)) {
-      relevance += 2;
-    }
+      // Check type match (disaster type)
+      if (jcase.type && jcase.type.includes(keyword)) {
+        relevance += 4;
+      }
 
-    // Check measure match
-    if (jcase.measure && jcase.measure.toLowerCase().includes(queryLower)) {
-      relevance += 2;
-    }
+      // Check measure match
+      if (jcase.measure && jcase.measure.includes(keyword)) {
+        relevance += 3;
+      }
 
-    // Check situation match
-    if (jcase.situation && jcase.situation.toLowerCase().includes(queryLower)) {
-      relevance += 1;
-    }
+      // Check cause match
+      if (jcase.cause && jcase.cause.includes(keyword)) {
+        relevance += 2;
+      }
+
+      // Check situation match
+      if (jcase.situation && jcase.situation.includes(keyword)) {
+        relevance += 1;
+      }
+
+      // Check equipment match
+      if (jcase.equipment && jcase.equipment.includes(keyword)) {
+        relevance += 2;
+      }
+    });
 
     if (relevance > 0) {
       results.push({ ...jcase, relevance });
@@ -222,9 +279,12 @@ function formatJireiContext(jireiCases, userMessage = '') {
     });
   } else {
     // General question - only provide measures/countermeasures, NOT disaster details
-    context += '※一般的な質問のため、対策のみを活用し、災害事例の詳細描写やURLは提示しないでください。\n';
-    jireiCases.slice(0, 5).forEach((jcase, index) => {
-      context += `\n${index + 1}. 対策: ${jcase.measure.substring(0, 200)}\n`;
+    context += '※一般的な質問のため、これらの対策を参考に一般的なアドバイスをしてください。災害事例の詳細描写やURLは提示しないでください。\n';
+    context += `※マッチした事例数: ${jireiCases.length}件\n`;
+    jireiCases.slice(0, 8).forEach((jcase, index) => {
+      // Show full measure text without truncation for better AI understanding
+      const measure = jcase.measure.length > 300 ? jcase.measure.substring(0, 300) + '...' : jcase.measure;
+      context += `\n${index + 1}. ${measure}\n`;
     });
   }
 
@@ -380,11 +440,16 @@ app.post('/api/chat', async (req, res) => {
     const knowledge = await loadKnowledge();
     const relevantKnowledge = searchKnowledge(knowledge, message);
     const knowledgeContext = formatKnowledgeContext(relevantKnowledge);
+    console.log(`[Chat] Knowledge matched: ${relevantKnowledge.length} items`);
 
     // Load and search jirei cases
     const jireiCases = await loadJireiCases();
     const relevantJirei = searchJireiCases(jireiCases, message);
     const jireiContext = formatJireiContext(relevantJirei, message);
+    console.log(`[Chat] Jirei cases matched: ${relevantJirei.length} cases`);
+    if (relevantJirei.length > 0) {
+      console.log(`[Chat] Top 3 jirei titles: ${relevantJirei.slice(0, 3).map(j => j.title).join(' | ')}`);
+    }
 
     // Combine contexts
     const combinedContext = knowledgeContext + jireiContext;
