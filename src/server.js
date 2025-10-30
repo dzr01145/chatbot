@@ -44,6 +44,8 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // AI Provider selection (google, openai, or anthropic)
 const AI_PROVIDER = process.env.AI_PROVIDER || 'google';
+const DEFAULT_GEMINI_MODEL = process.env.GEMINI_DEFAULT_MODEL || 'gemini-2.5-pro';
+const GEMINI_ALLOWED_MODELS = ['gemini-2.5-pro', 'gemini-2.5-flash'];
 
 // システムプロンプト（ユーザー提供）
 const SYSTEM_PROMPT = `あなたは顧客サポート向けに設計された、AI 搭載のウェブベース・チャットボットです。必要に応じて追加の知識モジュールを埋め込める柔軟なアーキテクチャを備えています。コア機能は、更新可能な内部ナレッジベース（ナレッジ）を活用し、労働安全衛生に関する典型的な質問に正確かつ明確に答えることです。あなたはこの領域の質問を認識して対応し、最新の埋め込み知識を用いながら、親しみやすくプロフェッショナルなトーンを保たねばなりません。
@@ -159,14 +161,29 @@ function formatKnowledgeContext(knowledgeItems) {
   return context;
 }
 
+function resolveGeminiModel(requestedModel) {
+  if (!requestedModel) {
+    return DEFAULT_GEMINI_MODEL;
+  }
+
+  if (GEMINI_ALLOWED_MODELS.includes(requestedModel)) {
+    return requestedModel;
+  }
+
+  console.warn(`Unsupported Gemini model "${requestedModel}" requested. Falling back to default.`);
+  return DEFAULT_GEMINI_MODEL;
+}
+
 // Call AI API based on provider
-async function callAI(message, conversationHistory, knowledgeContext) {
+async function callAI(message, conversationHistory, knowledgeContext, options = {}) {
   const userMessage = message + knowledgeContext;
 
   if (AI_PROVIDER === 'google') {
     // Google Gemini API
+    const requestedModel = options.model;
+    const resolvedModel = resolveGeminiModel(requestedModel);
     const model = aiClient.getGenerativeModel({
-      model: 'gemini-2.5-pro',
+      model: resolvedModel,
       systemInstruction: SYSTEM_PROMPT
     });
 
@@ -179,7 +196,10 @@ async function callAI(message, conversationHistory, knowledgeContext) {
     const chat = model.startChat({ history });
     const result = await chat.sendMessage(userMessage);
     const response = await result.response;
-    return response.text();
+    return {
+      reply: response.text(),
+      model: resolvedModel
+    };
 
   } else if (AI_PROVIDER === 'openai') {
     // OpenAI ChatGPT API
@@ -196,7 +216,10 @@ async function callAI(message, conversationHistory, knowledgeContext) {
       temperature: 0.7
     });
 
-    return response.choices[0].message.content;
+    return {
+      reply: response.choices[0].message.content,
+      model: 'gpt-4o-mini'
+    };
 
   } else if (AI_PROVIDER === 'anthropic') {
     // Anthropic Claude API
@@ -212,7 +235,10 @@ async function callAI(message, conversationHistory, knowledgeContext) {
       messages: messages
     });
 
-    return response.content[0].text;
+    return {
+      reply: response.content[0].text,
+      model: 'claude-3-5-sonnet-20241022'
+    };
   }
 
   throw new Error('無効なAIプロバイダーが設定されています');
@@ -221,7 +247,7 @@ async function callAI(message, conversationHistory, knowledgeContext) {
 // Chat endpoint
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, conversationHistory = [] } = req.body;
+    const { message, conversationHistory = [], model } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'メッセージが必要です' });
@@ -245,13 +271,19 @@ app.post('/api/chat', async (req, res) => {
     const knowledgeContext = formatKnowledgeContext(relevantKnowledge);
 
     // Call AI API
-    const reply = await callAI(message, conversationHistory, knowledgeContext);
+    const { reply, model: usedModel } = await callAI(
+      message,
+      conversationHistory,
+      knowledgeContext,
+      { model }
+    );
 
     res.json({
       reply,
       knowledgeUsed: relevantKnowledge.length > 0,
       knowledgeCount: relevantKnowledge.length,
-      provider: AI_PROVIDER
+      provider: AI_PROVIDER,
+      model: usedModel
     });
 
   } catch (error) {
@@ -316,12 +348,19 @@ app.post('/api/knowledge', async (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({
+  const payload = {
     status: 'ok',
     provider: AI_PROVIDER,
     apiConfigured: aiConfigured,
     timestamp: new Date().toISOString()
-  });
+  };
+
+  if (AI_PROVIDER === 'google') {
+    payload.defaultModel = DEFAULT_GEMINI_MODEL;
+    payload.allowedModels = GEMINI_ALLOWED_MODELS;
+  }
+
+  res.json(payload);
 });
 
 // Start server

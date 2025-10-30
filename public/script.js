@@ -3,11 +3,15 @@ const API_BASE = window.location.origin;
 
 // Conversation history
 let conversationHistory = [];
+let currentProvider = null;
+let selectedModel = 'gemini-2.5-pro';
+let availableGeminiModels = ['gemini-2.5-pro', 'gemini-2.5-flash'];
 
 // Load knowledge base on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadKnowledgeBase();
     setupInputHandlers();
+    setupModelSelector();
     checkApiHealth();
 });
 
@@ -31,18 +35,111 @@ function setupInputHandlers() {
     });
 }
 
+function setupModelSelector() {
+    const select = document.getElementById('modelSelect');
+    if (!select) {
+        return;
+    }
+
+    select.addEventListener('change', (event) => {
+        selectedModel = event.target.value;
+    });
+}
+
+function updateModelSelector(healthData) {
+    const container = document.getElementById('modelSelectContainer');
+    const select = document.getElementById('modelSelect');
+
+    if (!container || !select) {
+        return;
+    }
+
+    if (healthData.provider !== 'google') {
+        container.style.display = 'none';
+        selectedModel = '';
+        return;
+    }
+
+    container.style.display = '';
+
+    const models = Array.isArray(healthData.allowedModels) && healthData.allowedModels.length > 0
+        ? healthData.allowedModels
+        : availableGeminiModels;
+
+    availableGeminiModels = models.slice();
+    select.innerHTML = '';
+
+    models.forEach(modelName => {
+        const option = document.createElement('option');
+        option.value = modelName;
+        option.textContent = formatModelLabel(modelName);
+        select.appendChild(option);
+    });
+
+    const defaultModel = healthData.defaultModel || selectedModel || models[0];
+    selectedModel = defaultModel;
+    select.value = defaultModel;
+}
+
+function formatModelLabel(modelName) {
+    switch (modelName) {
+        case 'gemini-2.5-pro':
+            return 'Gemini 2.5 Pro';
+        case 'gemini-2.5-flash':
+            return 'Gemini 2.5 Flash';
+        default:
+            return modelName;
+    }
+}
+
+function syncModelSelection(modelName) {
+    if (!modelName || currentProvider !== 'google') {
+        return;
+    }
+
+    selectedModel = modelName;
+    if (!availableGeminiModels.includes(modelName)) {
+        availableGeminiModels.push(modelName);
+        availableGeminiModels = Array.from(new Set(availableGeminiModels));
+    }
+
+    const select = document.getElementById('modelSelect');
+    if (!select) {
+        return;
+    }
+
+    const hasOption = Array.from(select.options).some(opt => opt.value === modelName);
+    if (!hasOption) {
+        const option = document.createElement('option');
+        option.value = modelName;
+        option.textContent = formatModelLabel(modelName);
+        select.appendChild(option);
+    }
+
+    select.value = modelName;
+}
+
 // Check API health
 async function checkApiHealth() {
     try {
         const response = await fetch(`${API_BASE}/api/health`);
         const data = await response.json();
 
+        currentProvider = data.provider || null;
+        updateModelSelector(data);
+
         if (!data.apiConfigured) {
-            showSystemMessage('⚠️ APIキーが設定されていません。チャット機能を使用するには、サーバーの.envファイルにANTHROPIC_API_KEYを設定してください。');
+            const providerKeyMap = {
+                google: 'GOOGLE_API_KEY',
+                openai: 'OPENAI_API_KEY',
+                anthropic: 'ANTHROPIC_API_KEY'
+            };
+            const keyName = providerKeyMap[currentProvider] || 'API_KEY';
+            showSystemMessage(`APIキーが設定されていません。.envファイルに${keyName}を設定してください。`);
         }
     } catch (error) {
         console.error('Health check failed:', error);
-        showSystemMessage('⚠️ サーバーとの接続に問題があります。');
+        showSystemMessage('サーバーとの接続で問題が発生しました。');
     }
 }
 
@@ -88,15 +185,21 @@ async function sendMessage() {
     const loadingId = showLoading();
 
     try {
+        const payload = {
+            message,
+            conversationHistory
+        };
+
+        if (currentProvider === 'google' && selectedModel) {
+            payload.model = selectedModel;
+        }
+
         const response = await fetch(`${API_BASE}/api/chat`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                message,
-                conversationHistory
-            })
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
@@ -105,6 +208,10 @@ async function sendMessage() {
         }
 
         const data = await response.json();
+
+        if (currentProvider === 'google' && data.model) {
+            syncModelSelection(data.model);
+        }
 
         // Remove loading indicator
         removeLoading(loadingId);
