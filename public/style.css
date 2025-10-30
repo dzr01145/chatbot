@@ -53,17 +53,11 @@ body {
 }
 
 .main-content {
-    display: grid;
-    grid-template-columns: 1fr 400px;
+    display: flex;
+    flex-direction: column;
     gap: 1.5rem;
     padding: 1.5rem;
     flex: 1;
-}
-
-@media (max-width: 1024px) {
-    .main-content {
-        grid-template-columns: 1fr;
-    }
 }
 
 /* Chat Section */
@@ -150,7 +144,7 @@ body {
 }
 
 .message-content {
-    max-width: 70%;
+    max-width: 90%;
     padding: 1rem 1.25rem;
     border-radius: 12px;
     word-wrap: break-word;
@@ -291,137 +285,6 @@ body {
 #sendBtn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-}
-
-/* Knowledge Section */
-.knowledge-section {
-    background: var(--surface);
-    border-radius: 12px;
-    box-shadow: var(--shadow);
-    padding: 1.5rem;
-    max-height: calc(100vh - 250px);
-    overflow-y: auto;
-}
-
-.knowledge-section h3 {
-    color: var(--primary-color);
-    margin-bottom: 1rem;
-    font-size: 1.25rem;
-}
-
-.knowledge-section h4 {
-    color: var(--text-primary);
-    margin: 1.5rem 0 1rem;
-    font-size: 1rem;
-}
-
-.knowledge-stats {
-    background: var(--background);
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
-}
-
-.knowledge-stats p {
-    margin: 0.25rem 0;
-    font-size: 0.9rem;
-}
-
-.add-knowledge-form {
-    margin-bottom: 2rem;
-}
-
-.form-group {
-    margin-bottom: 1rem;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 0.9rem;
-    font-family: inherit;
-    transition: border-color 0.2s;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: var(--primary-color);
-}
-
-.add-btn {
-    width: 100%;
-    padding: 0.75rem;
-    background: var(--secondary-color);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.add-btn:hover {
-    background: #059669;
-    transform: translateY(-2px);
-    box-shadow: var(--shadow);
-}
-
-.knowledge-list {
-    margin-top: 1.5rem;
-}
-
-.knowledge-item {
-    background: var(--background);
-    padding: 1rem;
-    border-radius: 8px;
-    margin-bottom: 0.75rem;
-    border-left: 3px solid var(--primary-color);
-}
-
-.knowledge-item-category {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-}
-
-.knowledge-item-question {
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: var(--text-primary);
-}
-
-.knowledge-item-answer {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    margin-bottom: 0.5rem;
-}
-
-.knowledge-item-keywords {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.keyword-tag {
-    padding: 0.25rem 0.5rem;
-    background: var(--primary-color);
-    color: white;
-    border-radius: 4px;
-    font-size: 0.75rem;
 }
 
 /* Footer */

@@ -193,7 +193,12 @@ async function callAI(message, conversationHistory, knowledgeContext, options = 
       parts: [{ text: msg.content }]
     }));
 
-    const chat = model.startChat({ history });
+    const chat = model.startChat({
+      history,
+      generationConfig: {
+        maxOutputTokens: 2048
+      }
+    });
     const result = await chat.sendMessage(userMessage);
     const response = await result.response;
     return {
@@ -212,7 +217,7 @@ async function callAI(message, conversationHistory, knowledgeContext, options = 
     const response = await aiClient.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: messages,
-      max_tokens: 1024,
+      max_tokens: 2048,
       temperature: 0.7
     });
 
@@ -230,7 +235,7 @@ async function callAI(message, conversationHistory, knowledgeContext, options = 
 
     const response = await aiClient.messages.create({
       model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 1024,
+      max_tokens: 2048,
       system: SYSTEM_PROMPT,
       messages: messages
     });

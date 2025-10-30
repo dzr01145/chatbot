@@ -7,9 +7,7 @@ let currentProvider = null;
 let selectedModel = 'gemini-2.5-pro';
 let availableGeminiModels = ['gemini-2.5-pro', 'gemini-2.5-flash'];
 
-// Load knowledge base on page load
 document.addEventListener('DOMContentLoaded', () => {
-    loadKnowledgeBase();
     setupInputHandlers();
     setupModelSelector();
     checkApiHealth();
@@ -257,7 +255,7 @@ function displayMessage(text, sender, knowledgeUsed = false) {
 
     let knowledgeBadge = '';
     if (knowledgeUsed) {
-        knowledgeBadge = '<span class="knowledge-badge">ナレッジベース参照</span>';
+        knowledgeBadge = '<span class="knowledge-badge">ナレッジ参照</span>';
     }
 
     messageDiv.innerHTML = `
@@ -332,126 +330,3 @@ function scrollToBottom() {
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// Load knowledge base
-async function loadKnowledgeBase() {
-    try {
-        const response = await fetch(`${API_BASE}/api/knowledge`);
-        const knowledge = await response.json();
-
-        displayKnowledgeStats(knowledge);
-        populateCategorySelect(knowledge);
-        displayKnowledgeList(knowledge);
-
-    } catch (error) {
-        console.error('Error loading knowledge base:', error);
-        document.getElementById('knowledgeStats').innerHTML = '<p>ナレッジベースの読み込みに失敗しました</p>';
-    }
-}
-
-// Display knowledge stats
-function displayKnowledgeStats(knowledge) {
-    const statsDiv = document.getElementById('knowledgeStats');
-    const totalCategories = knowledge.categories.length;
-    const totalItems = knowledge.categories.reduce((sum, cat) => sum + cat.items.length, 0);
-
-    statsDiv.innerHTML = `
-        <p><strong>カテゴリー数:</strong> ${totalCategories}</p>
-        <p><strong>ナレッジ項目数:</strong> ${totalItems}</p>
-        <p><strong>最終更新:</strong> ${knowledge.metadata.last_updated || 'N/A'}</p>
-    `;
-}
-
-// Populate category select
-function populateCategorySelect(knowledge) {
-    const select = document.getElementById('categorySelect');
-    select.innerHTML = '<option value="">選択してください</option>';
-
-    knowledge.categories.forEach(category => {
-        const option = document.createElement('option');
-        option.value = category.id;
-        option.textContent = category.name;
-        select.appendChild(option);
-    });
-}
-
-// Display knowledge list
-function displayKnowledgeList(knowledge) {
-    const listDiv = document.getElementById('knowledgeList');
-    listDiv.innerHTML = '';
-
-    if (!knowledge.categories || knowledge.categories.length === 0) {
-        listDiv.innerHTML = '<p>ナレッジがありません</p>';
-        return;
-    }
-
-    knowledge.categories.forEach(category => {
-        category.items.forEach(item => {
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'knowledge-item';
-
-            const keywords = item.keywords.map(kw =>
-                `<span class="keyword-tag">${kw}</span>`
-            ).join('');
-
-            itemDiv.innerHTML = `
-                <div class="knowledge-item-category">${category.name}</div>
-                <div class="knowledge-item-question">${item.question}</div>
-                <div class="knowledge-item-answer">${item.answer.substring(0, 100)}${item.answer.length > 100 ? '...' : ''}</div>
-                <div class="knowledge-item-keywords">${keywords}</div>
-            `;
-
-            listDiv.appendChild(itemDiv);
-        });
-    });
-}
-
-// Add knowledge
-async function addKnowledge(event) {
-    event.preventDefault();
-
-    const categoryId = document.getElementById('categorySelect').value;
-    const question = document.getElementById('questionInput').value.trim();
-    const answer = document.getElementById('answerInput').value.trim();
-    const keywordsStr = document.getElementById('keywordsInput').value.trim();
-
-    if (!categoryId || !question || !answer || !keywordsStr) {
-        alert('すべての項目を入力してください');
-        return;
-    }
-
-    const keywords = keywordsStr.split(',').map(k => k.trim()).filter(k => k);
-
-    try {
-        const response = await fetch(`${API_BASE}/api/knowledge`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                categoryId,
-                question,
-                answer,
-                keywords
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'ナレッジの追加に失敗しました');
-        }
-
-        const data = await response.json();
-
-        // Clear form
-        document.getElementById('addKnowledgeForm').reset();
-
-        // Reload knowledge base
-        await loadKnowledgeBase();
-
-        alert('ナレッジが追加されました！');
-
-    } catch (error) {
-        console.error('Error adding knowledge:', error);
-        alert(`エラー: ${error.message}`);
-    }
-}
