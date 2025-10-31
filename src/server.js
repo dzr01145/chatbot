@@ -285,39 +285,149 @@ function searchJireiCases(cases, query) {
   return results.sort((a, b) => b.relevance - a.relevance);
 }
 
+// Convert number to Japanese kanji (1-9999)
+function numberToKanji(num) {
+  if (num === 0) return '〇';
+
+  const digits = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  const positions = ['', '十', '百', '千'];
+
+  let result = '';
+  let str = num.toString();
+  let len = str.length;
+
+  for (let i = 0; i < len; i++) {
+    const digit = parseInt(str[i]);
+    const pos = len - i - 1;
+
+    if (digit === 0) continue;
+
+    if (pos > 0 && digit === 1 && i === 0) {
+      // Skip '一' for first position (e.g., 10 -> 十, not 一十)
+      result += positions[pos];
+    } else {
+      result += digits[digit] + positions[pos];
+    }
+  }
+
+  return result;
+}
+
+// Extract article numbers from query
+function extractArticleNumbers(query) {
+  const numbers = [];
+
+  // Match patterns like "100条", "第100条", "百条", "第百条"
+  const patterns = [
+    /第?(\d+)条/g,           // 100条, 第100条
+    /第?([一二三四五六七八九十百千]+)条/g  // 百条, 第百条
+  ];
+
+  patterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(query)) !== null) {
+      numbers.push(match[1]);
+    }
+  });
+
+  return numbers;
+}
+
+// Normalize law name (handle aliases)
+function normalizeLawName(query) {
+  let normalized = query;
+
+  // Handle common aliases
+  normalized = normalized.replace(/労働安全衛生規則/g, '労働安全衛生法施行規則');
+  normalized = normalized.replace(/安衛則/g, '労働安全衛生法施行規則');
+  normalized = normalized.replace(/安衛法/g, '労働安全衛生法');
+  normalized = normalized.replace(/施行令/g, '労働安全衛生法施行令');
+
+  return normalized;
+}
+
 // Search laws
 function searchLaws(laws, query) {
   const results = [];
   const queryLower = query.toLowerCase();
+  const normalizedQuery = normalizeLawName(queryLower);
 
-  // Common law-related keywords
-  const lawKeywords = ['条', '項', '法', '規則', '令', '施行', '義務', '禁止', '罰則', '届出', '報告'];
+  // Extract article numbers from query
+  const requestedArticles = extractArticleNumbers(query);
+
+  // Check if query specifies a specific law
+  const lawNames = ['労働安全衛生法', '労働安全衛生法施行規則', '労働安全衛生法施行令'];
+  let specifiedLaw = null;
+  for (const lawName of lawNames) {
+    if (normalizedQuery.includes(lawName.toLowerCase())) {
+      specifiedLaw = lawName;
+      break;
+    }
+  }
 
   laws.forEach(law => {
     let relevance = 0;
 
+    // If a specific law is mentioned, filter by it
+    if (specifiedLaw && law.law !== specifiedLaw) {
+      return; // Skip laws that don't match
+    }
+
+    // Check for exact article number match (highest priority)
+    if (requestedArticles.length > 0 && law.articleNumber) {
+      for (const reqArticle of requestedArticles) {
+        // Check if requested article matches law's article number
+        // Handle both numeric (100) and kanji (百) forms
+        const articleNum = law.articleNumber.toLowerCase();
+
+        // Direct match
+        if (articleNum === `第${reqArticle}条`) {
+          relevance += 100; // Exact match - highest priority
+          break;
+        }
+
+        // Try converting number to kanji
+        if (!isNaN(reqArticle)) {
+          const kanjiNum = numberToKanji(parseInt(reqArticle));
+          if (articleNum === `第${kanjiNum}条`) {
+            relevance += 100; // Exact match
+            break;
+          }
+        }
+
+        // Partial match (for articles like 第百条の二)
+        if (articleNum.startsWith(`第${reqArticle}条`)) {
+          relevance += 50;
+          break;
+        }
+
+        if (!isNaN(reqArticle)) {
+          const kanjiNum = numberToKanji(parseInt(reqArticle));
+          if (articleNum.startsWith(`第${kanjiNum}条`)) {
+            relevance += 50;
+            break;
+          }
+        }
+      }
+    }
+
     // Check title match
-    if (law.title && law.title.toLowerCase().includes(queryLower)) {
+    if (law.title && law.title.toLowerCase().includes(normalizedQuery)) {
       relevance += 5;
     }
 
     // Check content match
-    if (law.content && law.content.toLowerCase().includes(queryLower)) {
+    if (law.content && law.content.toLowerCase().includes(normalizedQuery)) {
       relevance += 3;
     }
 
     // Check chapter match
-    if (law.chapter && law.chapter.toLowerCase().includes(queryLower)) {
+    if (law.chapter && law.chapter.toLowerCase().includes(normalizedQuery)) {
       relevance += 2;
     }
 
-    // Check article number match
-    if (law.articleNumber && law.articleNumber.toLowerCase().includes(queryLower)) {
-      relevance += 4;
-    }
-
     // Check tags match
-    if (law.tags && law.tags.some(tag => tag.toLowerCase().includes(queryLower))) {
+    if (law.tags && law.tags.some(tag => tag.toLowerCase().includes(normalizedQuery))) {
       relevance += 2;
     }
 
@@ -326,7 +436,7 @@ function searchLaws(laws, query) {
     }
   });
 
-  // Sort by relevance
+  // Sort by relevance (exact article matches will be first)
   return results.sort((a, b) => b.relevance - a.relevance);
 }
 
@@ -370,23 +480,54 @@ function formatJireiContext(jireiCases, userMessage = '') {
     context += '  原因: [原因の説明]\n';
     context += '  対策: [対策の説明]\n';
     context += '  詳細URL: [URLをそのまま記載]\n';
-    context += '※URLは必ず「詳細URL: 」の後に完全なURLを記載すること。省略厳禁。\n\n';
+    context += '※URLは必ず「詳細URL: 」の後に完全なURLを記載すること。省略厳禁。\n';
+    context += '※フィールドが空の場合は「情報なし」と明記すること。\n\n';
+
     jireiCases.slice(0, 3).forEach((jcase, index) => {
-      context += `${index + 1}. タイトル: ${jcase.title}\n`;
-      context += `   発生状況: ${jcase.situation.substring(0, 200)}...\n`;
-      context += `   原因: ${jcase.cause.substring(0, 150)}...\n`;
-      context += `   対策: ${jcase.measure.substring(0, 150)}...\n`;
-      context += `   詳細URL: ${jcase.url}\n\n`;
+      context += `${index + 1}. タイトル: ${jcase.title || '情報なし'}\n`;
+
+      // 発生状況
+      if (jcase.situation && jcase.situation.trim()) {
+        const situation = jcase.situation.length > 200 ? jcase.situation.substring(0, 200) + '...' : jcase.situation;
+        context += `   発生状況: ${situation}\n`;
+      } else {
+        context += `   発生状況: 情報なし\n`;
+      }
+
+      // 原因
+      if (jcase.cause && jcase.cause.trim()) {
+        const cause = jcase.cause.length > 150 ? jcase.cause.substring(0, 150) + '...' : jcase.cause;
+        context += `   原因: ${cause}\n`;
+      } else {
+        context += `   原因: 情報なし\n`;
+      }
+
+      // 対策
+      if (jcase.measure && jcase.measure.trim()) {
+        const measure = jcase.measure.length > 150 ? jcase.measure.substring(0, 150) + '...' : jcase.measure;
+        context += `   対策: ${measure}\n`;
+      } else {
+        context += `   対策: 情報なし\n`;
+      }
+
+      context += `   詳細URL: ${jcase.url || '情報なし'}\n\n`;
     });
   } else {
     // General question - only provide measures/countermeasures, NOT disaster details
     context += '※一般的な質問のため、これらの対策を参考に一般的なアドバイスをしてください。災害事例の詳細描写やURLは提示しないでください。\n';
     context += `※マッチした事例数: ${jireiCases.length}件\n`;
-    jireiCases.slice(0, 8).forEach((jcase, index) => {
+
+    // Filter out cases with empty measures and format
+    const validCases = jireiCases.filter(jcase => jcase.measure && jcase.measure.trim());
+    validCases.slice(0, 8).forEach((jcase, index) => {
       // Show full measure text without truncation for better AI understanding
       const measure = jcase.measure.length > 300 ? jcase.measure.substring(0, 300) + '...' : jcase.measure;
       context += `\n${index + 1}. ${measure}\n`;
     });
+
+    if (validCases.length === 0) {
+      context += '\n※有効な対策情報が見つかりませんでした。\n';
+    }
   }
 
   return context;
