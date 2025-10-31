@@ -81,7 +81,14 @@ const SYSTEM_PROMPT = `あなたは労働安全衛生の専門家である労働
    - 「事例を示して」「事例はありますか」「事例を教えて」
    - 「具体例を教えて」「実例を見せて」「実際の例を教えて」「災害事例を教えて」
 
-   この場合のみ、ナレッジベースの具体的な災害事例、URL、詳細な内容を提示すること。
+   **事例を提示する際の必須形式:**
+   - タイトル: [事例のタイトル]
+   - 発生状況: [状況の説明]
+   - 原因: [原因の説明]
+   - 対策: [対策の説明]
+   - 詳細URL: [完全なURL - 必ず記載すること]
+
+   **重要:** URLは絶対に省略せず、必ず「詳細URL: https://...」の形式で記載すること。
 
 4. **質問の種類の判別**:
    - 「対策を教えて」→ ナレッジベースの対策内容を使って回答（災害事例の詳細は提示しない）
@@ -270,12 +277,19 @@ function formatJireiContext(jireiCases, userMessage = '') {
   if (isAskingForExamples) {
     // User explicitly asked for examples - show full details including URL
     context += '※ユーザーが事例を求めているため、具体的な災害事例の詳細を提示してください。\n';
+    context += '※事例を提示する際は、必ず以下の形式で回答してください:\n';
+    context += '  タイトル: [事例タイトル]\n';
+    context += '  発生状況: [状況の説明]\n';
+    context += '  原因: [原因の説明]\n';
+    context += '  対策: [対策の説明]\n';
+    context += '  詳細URL: [URLをそのまま記載]\n';
+    context += '※URLは必ず「詳細URL: 」の後に完全なURLを記載すること。省略厳禁。\n\n';
     jireiCases.slice(0, 3).forEach((jcase, index) => {
-      context += `\n${index + 1}. ${jcase.title}\n`;
+      context += `${index + 1}. タイトル: ${jcase.title}\n`;
       context += `   発生状況: ${jcase.situation.substring(0, 200)}...\n`;
       context += `   原因: ${jcase.cause.substring(0, 150)}...\n`;
       context += `   対策: ${jcase.measure.substring(0, 150)}...\n`;
-      context += `   詳細: ${jcase.url}\n`;
+      context += `   詳細URL: ${jcase.url}\n\n`;
     });
   } else {
     // General question - only provide measures/countermeasures, NOT disaster details
