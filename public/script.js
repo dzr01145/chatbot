@@ -87,6 +87,10 @@ async function sendMessage() {
     const loadingId = showLoading();
 
     try {
+        // Get selected model
+        const modelSelect = document.getElementById('modelSelect');
+        const selectedModel = modelSelect.value;
+
         const response = await fetch(`${API_BASE}/api/chat`, {
             method: 'POST',
             headers: {
@@ -94,7 +98,8 @@ async function sendMessage() {
             },
             body: JSON.stringify({
                 message,
-                conversationHistory
+                conversationHistory,
+                model: selectedModel
             })
         });
 

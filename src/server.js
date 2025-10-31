@@ -458,13 +458,13 @@ function formatKnowledgeContext(knowledgeItems) {
 }
 
 // Call AI API based on provider
-async function callAI(message, conversationHistory, knowledgeContext) {
+async function callAI(message, conversationHistory, knowledgeContext, selectedModel = 'gemini-2.5-flash') {
   const userMessage = message + knowledgeContext;
 
   if (AI_PROVIDER === 'google') {
     // Google Gemini API
     const model = aiClient.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: selectedModel,
       systemInstruction: SYSTEM_PROMPT
     });
 
@@ -519,10 +519,18 @@ async function callAI(message, conversationHistory, knowledgeContext) {
 // Chat endpoint
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, conversationHistory = [] } = req.body;
+    const { message, conversationHistory = [], model = 'gemini-2.5-flash' } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'メッセージが必要です' });
+    }
+
+    // Validate model for Google provider
+    if (AI_PROVIDER === 'google') {
+      const validModels = ['gemini-2.5-flash', 'gemini-2.5-pro'];
+      if (!validModels.includes(model)) {
+        return res.status(400).json({ error: '無効なモデルが指定されました' });
+      }
     }
 
     if (!aiConfigured) {
@@ -564,8 +572,9 @@ app.post('/api/chat', async (req, res) => {
     // Combine contexts
     const combinedContext = knowledgeContext + jireiContext + lawsContext;
 
-    // Call AI API
-    const reply = await callAI(message, conversationHistory, combinedContext);
+    // Call AI API with selected model
+    console.log(`[Chat] Using model: ${model}`);
+    const reply = await callAI(message, conversationHistory, combinedContext, model);
 
     res.json({
       reply,
@@ -575,7 +584,8 @@ app.post('/api/chat', async (req, res) => {
       jireiCount: relevantJirei.length,
       lawsUsed: relevantLaws.length > 0,
       lawsCount: relevantLaws.length,
-      provider: AI_PROVIDER
+      provider: AI_PROVIDER,
+      model: model
     });
 
   } catch (error) {
