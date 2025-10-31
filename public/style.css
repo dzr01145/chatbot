@@ -36,6 +36,11 @@ body {
 }
 
 .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     color: white;
     padding: 0.75rem 1rem;
@@ -97,6 +102,7 @@ body {
 
 .main-content {
     padding: 0.75rem;
+    padding-top: 80px; /* ヘッダーの高さ分のスペースを確保 */
     flex: 1;
     max-width: 100%;
     margin: 0 auto;
@@ -385,6 +391,7 @@ body {
 
     .main-content {
         padding: 0.5rem;
+        padding-top: 180px; /* モバイルではヘッダーが縦並びで高くなるため */
     }
 
     .message-content {
