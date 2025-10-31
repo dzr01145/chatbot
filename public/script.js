@@ -87,9 +87,11 @@ async function sendMessage() {
     const loadingId = showLoading();
 
     try {
-        // Get selected model
+        // Get selected model and response length
         const modelSelect = document.getElementById('modelSelect');
         const selectedModel = modelSelect.value;
+        const lengthSelect = document.getElementById('lengthSelect');
+        const selectedLength = lengthSelect.value;
 
         const response = await fetch(`${API_BASE}/api/chat`, {
             method: 'POST',
@@ -99,7 +101,8 @@ async function sendMessage() {
             body: JSON.stringify({
                 message,
                 conversationHistory,
-                model: selectedModel
+                model: selectedModel,
+                responseLength: selectedLength
             })
         });
 

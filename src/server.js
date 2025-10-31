@@ -457,15 +457,29 @@ function formatKnowledgeContext(knowledgeItems) {
   return context;
 }
 
+// Generate system prompt with response length instruction
+function getSystemPrompt(responseLength = 'short') {
+  let lengthInstruction = '';
+
+  if (responseLength === 'short') {
+    lengthInstruction = '\n\n【回答の長さ】\n回答は簡潔に、300文字程度以内にまとめてください。要点を絞り、最も重要な情報のみを提供してください。';
+  } else if (responseLength === 'long') {
+    lengthInstruction = '\n\n【回答の長さ】\n文字数制限はありません。必要に応じて詳細な説明を提供してください。';
+  }
+
+  return SYSTEM_PROMPT + lengthInstruction;
+}
+
 // Call AI API based on provider
-async function callAI(message, conversationHistory, knowledgeContext, selectedModel = 'gemini-2.5-flash') {
+async function callAI(message, conversationHistory, knowledgeContext, selectedModel = 'gemini-2.5-flash', responseLength = 'short') {
   const userMessage = message + knowledgeContext;
+  const systemPrompt = getSystemPrompt(responseLength);
 
   if (AI_PROVIDER === 'google') {
     // Google Gemini API
     const model = aiClient.getGenerativeModel({
       model: selectedModel,
-      systemInstruction: SYSTEM_PROMPT
+      systemInstruction: systemPrompt
     });
 
     // Convert conversation history to Gemini format
@@ -482,7 +496,7 @@ async function callAI(message, conversationHistory, knowledgeContext, selectedMo
   } else if (AI_PROVIDER === 'openai') {
     // OpenAI ChatGPT API
     const messages = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       ...conversationHistory,
       { role: 'user', content: userMessage }
     ];
@@ -506,7 +520,7 @@ async function callAI(message, conversationHistory, knowledgeContext, selectedMo
     const response = await aiClient.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: messages
     });
 
@@ -519,7 +533,7 @@ async function callAI(message, conversationHistory, knowledgeContext, selectedMo
 // Chat endpoint
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, conversationHistory = [], model = 'gemini-2.5-flash' } = req.body;
+    const { message, conversationHistory = [], model = 'gemini-2.5-flash', responseLength = 'short' } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'メッセージが必要です' });
@@ -531,6 +545,12 @@ app.post('/api/chat', async (req, res) => {
       if (!validModels.includes(model)) {
         return res.status(400).json({ error: '無効なモデルが指定されました' });
       }
+    }
+
+    // Validate response length
+    const validLengths = ['short', 'long'];
+    if (!validLengths.includes(responseLength)) {
+      return res.status(400).json({ error: '無効な回答長さが指定されました' });
     }
 
     if (!aiConfigured) {
@@ -572,9 +592,9 @@ app.post('/api/chat', async (req, res) => {
     // Combine contexts
     const combinedContext = knowledgeContext + jireiContext + lawsContext;
 
-    // Call AI API with selected model
-    console.log(`[Chat] Using model: ${model}`);
-    const reply = await callAI(message, conversationHistory, combinedContext, model);
+    // Call AI API with selected model and response length
+    console.log(`[Chat] Using model: ${model}, Response length: ${responseLength}`);
+    const reply = await callAI(message, conversationHistory, combinedContext, model, responseLength);
 
     res.json({
       reply,
@@ -585,7 +605,8 @@ app.post('/api/chat', async (req, res) => {
       lawsUsed: relevantLaws.length > 0,
       lawsCount: relevantLaws.length,
       provider: AI_PROVIDER,
-      model: model
+      model: model,
+      responseLength: responseLength
     });
 
   } catch (error) {
