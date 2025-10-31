@@ -217,8 +217,8 @@ function extractKeywords(query) {
   const safetyTerms = ['熱中症', '転倒', '転落', '墜落', '挟まれ', '感電', '火災', '爆発', '中毒',
     '酸欠', '騒音', '振動', '腰痛', '切創', '骨折', '火傷', '凍傷', '熱傷'];
   const locationTerms = ['事務所', 'オフィス', '工場', '倉庫', '建設現場', '工事現場', '階段', '通路'];
-  const equipmentTerms = ['機械', '設備', 'フォークリフト', 'クレーン', 'はしご', '足場', '脚立',
-    'コンベア', 'プレス', '電動工具'];
+  const equipmentTerms = ['機械', '設備', 'フォークリフト', 'クレーン', '高所作業車', 'はしご', '足場', '脚立',
+    'コンベア', 'プレス', '電動工具', '移動式クレーン', 'トラック', '玉掛け'];
 
   const allTerms = [...safetyTerms, ...locationTerms, ...equipmentTerms];
 
@@ -520,21 +520,21 @@ function formatJireiContext(jireiCases, userMessage = '') {
       context += `タイトル: ${jcase.title || '情報なし'}\n`;
 
       if (jcase.situation && jcase.situation.trim()) {
-        const situation = jcase.situation.length > 300 ? jcase.situation.substring(0, 300) + '...' : jcase.situation;
+        const situation = jcase.situation.length > 200 ? jcase.situation.substring(0, 200) + '...' : jcase.situation;
         context += `発生状況: ${situation}\n`;
       } else {
         context += `発生状況: 情報なし\n`;
       }
 
       if (jcase.cause && jcase.cause.trim()) {
-        const cause = jcase.cause.length > 200 ? jcase.cause.substring(0, 200) + '...' : jcase.cause;
+        const cause = jcase.cause.length > 150 ? jcase.cause.substring(0, 150) + '...' : jcase.cause;
         context += `原因: ${cause}\n`;
       } else {
         context += `原因: 情報なし\n`;
       }
 
       if (jcase.measure && jcase.measure.trim()) {
-        const measure = jcase.measure.length > 200 ? jcase.measure.substring(0, 200) + '...' : jcase.measure;
+        const measure = jcase.measure.length > 150 ? jcase.measure.substring(0, 150) + '...' : jcase.measure;
         context += `対策: ${measure}\n`;
       } else {
         context += `対策: 情報なし\n`;
@@ -648,8 +648,16 @@ async function callAI(message, conversationHistory, knowledgeContext, selectedMo
 
   if (AI_PROVIDER === 'google') {
     // Google Gemini API with retry
-    // Set max tokens based on response length
-    const maxOutputTokens = responseLength === 'long' ? 8192 : 2048;
+    // Set max tokens based on response length and whether examples are requested
+    const isAskingForExamples = /事例|実例|具体例|ケース|example|case/i.test(message);
+    let maxOutputTokens;
+    if (responseLength === 'long') {
+      maxOutputTokens = 8192;
+    } else if (isAskingForExamples) {
+      maxOutputTokens = 4096; // Increase for examples even in short mode
+    } else {
+      maxOutputTokens = 2048;
+    }
 
     const model = aiClient.getGenerativeModel({
       model: selectedModel,
