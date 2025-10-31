@@ -105,7 +105,8 @@ const SYSTEM_PROMPT = `あなたは労働安全衛生の専門家である労働
    対策: [データベースの対策]
    詳細URL: [データベースのURL]
 
-   **重要:** URLは自分で作成せず、データベースのURLをそのままコピーすること。
+   **重要:** URLは絶対に自分で作成せず、データベースのURLをそのままコピーすること。
+   すべてのURLは https://anzeninfo.mhlw.go.jp/ で始まります。これ以外のURLは使用しないこと。
 
 4. **質問の種類の判別**:
    - 「対策を教えて」→ ナレッジベースの対策内容を使って回答（災害事例の詳細は提示しない）
@@ -508,13 +509,14 @@ function formatJireiContext(jireiCases, userMessage = '') {
   if (isAskingForExamples) {
     // User explicitly asked for examples - show full details including URL
     context += '\n【重要】以下のデータベース情報を一字一句そのまま使用してください。\n';
-    context += 'URLを自分で作成したり変更したりしないでください。\n\n';
+    context += '特にURLは絶対に変更・作成せず、データベースのURLをそのままコピーしてください。\n';
+    context += 'すべてのURLは https://anzeninfo.mhlw.go.jp/ で始まります。\n\n';
     context += '【必須の回答形式】\n';
     context += 'タイトル: [データベースのタイトル]\n';
     context += '発生状況: [データベースの発生状況]\n';
     context += '原因: [データベースの原因]\n';
     context += '対策: [データベースの対策]\n';
-    context += '詳細URL: [データベースのURL]\n\n';
+    context += '詳細URL: [データベースのURL - 必ず https://anzeninfo.mhlw.go.jp/ で始まる]\n\n';
 
     jireiCases.slice(0, 3).forEach((jcase, index) => {
       context += `\n--- 事例 ${index + 1} ---\n`;
@@ -541,7 +543,11 @@ function formatJireiContext(jireiCases, userMessage = '') {
         context += `対策: 情報なし\n`;
       }
 
+      // Emphasize URL - must be copied exactly
       context += `詳細URL: ${jcase.url || '情報なし'}\n`;
+      if (jcase.url && jcase.url.includes('anzeninfo.mhlw.go.jp')) {
+        context += `↑このURLをそのままコピーすること（https://anzeninfo.mhlw.go.jp/で始まる）\n`;
+      }
     });
   } else {
     // General question - only provide measures/countermeasures, NOT disaster details
