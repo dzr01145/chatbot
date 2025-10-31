@@ -98,28 +98,14 @@ const SYSTEM_PROMPT = `あなたは労働安全衛生の専門家である労働
    - 「事例を示して」「事例はありますか」「事例を教えて」
    - 「具体例を教えて」「実例を見せて」「実際の例を教えて」「災害事例を教えて」
 
-   **事例を提示する際の必須形式（この形式を厳守すること）:**
+   **事例を提示する際の必須形式:**
+   タイトル: [データベースのタイトル]
+   発生状況: [データベースの発生状況]
+   原因: [データベースの原因]
+   対策: [データベースの対策]
+   詳細URL: [データベースのURL]
 
-   必ず以下の形式で出力してください。ラベル（タイトル:、発生状況:、原因:、対策:、詳細URL:）は絶対に省略・変更しないこと。
-
-   【出力例】
-   タイトル: [データベースのタイトルをそのまま記載]
-   発生状況: [データベースの発生状況をそのまま記載]
-   原因: [データベースの原因をそのまま記載]
-   対策: [データベースの対策をそのまま記載]
-   詳細URL: [データベースのURLをそのまま記載]
-
-   【絶対に禁止される出力形式】
-   ❌ 箇条書き（・や-で始まる）
-   ❌ ラベルなしの文章
-   ❌ 事例1*のような見出しのみ
-   ❌ タイトルやURLの省略
-
-   **重要:**
-   - 各項目は必ず「タイトル:」「発生状況:」「原因:」「対策:」「詳細URL:」のラベルを付けること
-   - ラベルを省略したり、変更したり、箇条書きにしたりしないこと
-   - URLは絶対に省略・変更・作成せず、データベースに記載されているURLをそのままコピーすること
-   - 複数の事例を提示する場合も、各事例ごとに上記の形式を繰り返すこと
+   **重要:** URLは自分で作成せず、データベースのURLをそのままコピーすること。
 
 4. **質問の種類の判別**:
    - 「対策を教えて」→ ナレッジベースの対策内容を使って回答（災害事例の詳細は提示しない）
@@ -520,70 +506,41 @@ function formatJireiContext(jireiCases, userMessage = '') {
 
   if (isAskingForExamples) {
     // User explicitly asked for examples - show full details including URL
-    context += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
-    context += '【最重要指示 - 絶対に遵守すること】\n';
-    context += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
-    context += '1. 以下に記載された災害事例の情報を一字一句そのまま使用してください。\n';
-    context += '2. タイトル、発生状況、原因、対策、URLを絶対に変更・推測・補完・省略しないでください。\n';
-    context += '3. あなたの事前学習知識は一切使用せず、以下のデータベース情報のみを使用してください。\n';
-    context += '4. URLは必ず以下に記載されているURLをそのままコピーしてください。\n';
-    context += '5. URLを自分で作成したり、推測したり、変更したりすることは絶対に禁止です。\n';
-    context += '6. 以下に記載されていない事例については「データベースに情報がありません」と答えてください。\n';
-    context += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
-    context += '【回答の必須テンプレート】\n';
-    context += '必ず以下の形式で回答してください:\n\n';
-    context += 'タイトル: [データベースのタイトルをそのまま記載]\n';
-    context += '発生状況: [データベースの発生状況をそのまま記載]\n';
-    context += '原因: [データベースの原因をそのまま記載]\n';
-    context += '対策: [データベースの対策をそのまま記載]\n';
-    context += '詳細URL: [データベースのURLをそのまま記載]\n\n';
-    context += '【禁止事項】\n';
-    context += '❌ ラベル（タイトル:、発生状況:、原因:、対策:、詳細URL:）を省略すること\n';
-    context += '❌ 箇条書き（・や-で始まる形式）で出力すること\n';
-    context += '❌ 「事例1*」のような見出しのみで内容を省略すること\n\n';
+    context += '\n【重要】以下のデータベース情報を一字一句そのまま使用してください。\n';
+    context += 'URLを自分で作成したり変更したりしないでください。\n\n';
+    context += '【必須の回答形式】\n';
+    context += 'タイトル: [データベースのタイトル]\n';
+    context += '発生状況: [データベースの発生状況]\n';
+    context += '原因: [データベースの原因]\n';
+    context += '対策: [データベースの対策]\n';
+    context += '詳細URL: [データベースのURL]\n\n';
 
     jireiCases.slice(0, 3).forEach((jcase, index) => {
-      context += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      context += `【事例データ ${index + 1}】\n`;
-      context += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      context += `\n--- 事例 ${index + 1} ---\n`;
+      context += `タイトル: ${jcase.title || '情報なし'}\n`;
 
-      context += `■タイトル:\n${jcase.title || '情報なし'}\n\n`;
-
-      // 発生状況
       if (jcase.situation && jcase.situation.trim()) {
-        const situation = jcase.situation.length > 200 ? jcase.situation.substring(0, 200) + '...' : jcase.situation;
-        context += `■発生状況:\n${situation}\n\n`;
+        const situation = jcase.situation.length > 300 ? jcase.situation.substring(0, 300) + '...' : jcase.situation;
+        context += `発生状況: ${situation}\n`;
       } else {
-        context += `■発生状況:\n情報なし\n\n`;
+        context += `発生状況: 情報なし\n`;
       }
 
-      // 原因
       if (jcase.cause && jcase.cause.trim()) {
-        const cause = jcase.cause.length > 150 ? jcase.cause.substring(0, 150) + '...' : jcase.cause;
-        context += `■原因:\n${cause}\n\n`;
+        const cause = jcase.cause.length > 200 ? jcase.cause.substring(0, 200) + '...' : jcase.cause;
+        context += `原因: ${cause}\n`;
       } else {
-        context += `■原因:\n情報なし\n\n`;
+        context += `原因: 情報なし\n`;
       }
 
-      // 対策
       if (jcase.measure && jcase.measure.trim()) {
-        const measure = jcase.measure.length > 150 ? jcase.measure.substring(0, 150) + '...' : jcase.measure;
-        context += `■対策:\n${measure}\n\n`;
+        const measure = jcase.measure.length > 200 ? jcase.measure.substring(0, 200) + '...' : jcase.measure;
+        context += `対策: ${measure}\n`;
       } else {
-        context += `■対策:\n情報なし\n\n`;
+        context += `対策: 情報なし\n`;
       }
 
-      context += `■詳細URL:\n${jcase.url || '情報なし'}\n`;
-      context += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-
-      if (index === 0) {
-        context += `\n【注意】上記の情報を使用して、必ず以下の形式で回答してください:\n`;
-        context += `タイトル: [上記のタイトルをそのまま]\n`;
-        context += `発生状況: [上記の発生状況をそのまま]\n`;
-        context += `原因: [上記の原因をそのまま]\n`;
-        context += `対策: [上記の対策をそのまま]\n`;
-        context += `詳細URL: [上記のURLをそのまま]\n\n`;
-      }
+      context += `詳細URL: ${jcase.url || '情報なし'}\n`;
     });
   } else {
     // General question - only provide measures/countermeasures, NOT disaster details
