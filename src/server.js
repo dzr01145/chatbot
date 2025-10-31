@@ -448,13 +448,17 @@ function formatLawsContext(laws, userMessage = '') {
 
   let context = '\n\n【参考法令データベース】\n';
   context += `※マッチした法令: ${laws.length}件\n`;
-  context += '※以下の法令条文を参考に、正確な法的根拠を示して回答してください。\n\n';
+  context += '【重要な指示】\n';
+  context += '※以下の法令条文を回答に使用する際は、条文番号と内容を一字一句正確に引用してください。\n';
+  context += '※絶対に条文番号を変更したり、内容を推測で補ったりしないでください。\n';
+  context += '※提供された情報のみを使用し、提供されていない条文については「情報がありません」と答えてください。\n\n';
 
   laws.slice(0, 5).forEach((law, index) => {
-    context += `${index + 1}. 【${law.law}】${law.articleNumber}\n`;
-    context += `   章: ${law.chapter}\n`;
+    context += `${index + 1}. 【法令名】${law.law}\n`;
+    context += `   【条文番号】${law.articleNumber}\n`;
+    context += `   【章】${law.chapter}\n`;
     const content = law.content.length > 400 ? law.content.substring(0, 400) + '...' : law.content;
-    context += `   内容: ${content}\n\n`;
+    context += `   【条文内容】${content}\n\n`;
   });
 
   return context;
@@ -473,7 +477,10 @@ function formatJireiContext(jireiCases, userMessage = '') {
 
   if (isAskingForExamples) {
     // User explicitly asked for examples - show full details including URL
+    context += '【重要な指示】\n';
     context += '※ユーザーが事例を求めているため、具体的な災害事例の詳細を提示してください。\n';
+    context += '※以下の情報を回答に使用する際は、一字一句そのまま正確に記載してください。\n';
+    context += '※絶対にタイトル、URL、内容を変更・省略しないでください。\n';
     context += '※事例を提示する際は、必ず以下の形式で回答してください:\n';
     context += '  タイトル: [事例タイトル]\n';
     context += '  発生状況: [状況の説明]\n';
@@ -481,36 +488,37 @@ function formatJireiContext(jireiCases, userMessage = '') {
     context += '  対策: [対策の説明]\n';
     context += '  詳細URL: [URLをそのまま記載]\n';
     context += '※URLは必ず「詳細URL: 」の後に完全なURLを記載すること。省略厳禁。\n';
-    context += '※フィールドが空の場合は「情報なし」と明記すること。\n\n';
+    context += '※フィールドが「情報なし」の場合は、そのまま「情報なし」と記載すること。\n\n';
 
     jireiCases.slice(0, 3).forEach((jcase, index) => {
-      context += `${index + 1}. タイトル: ${jcase.title || '情報なし'}\n`;
+      context += `【事例${index + 1}】\n`;
+      context += `タイトル: ${jcase.title || '情報なし'}\n`;
 
       // 発生状況
       if (jcase.situation && jcase.situation.trim()) {
         const situation = jcase.situation.length > 200 ? jcase.situation.substring(0, 200) + '...' : jcase.situation;
-        context += `   発生状況: ${situation}\n`;
+        context += `発生状況: ${situation}\n`;
       } else {
-        context += `   発生状況: 情報なし\n`;
+        context += `発生状況: 情報なし\n`;
       }
 
       // 原因
       if (jcase.cause && jcase.cause.trim()) {
         const cause = jcase.cause.length > 150 ? jcase.cause.substring(0, 150) + '...' : jcase.cause;
-        context += `   原因: ${cause}\n`;
+        context += `原因: ${cause}\n`;
       } else {
-        context += `   原因: 情報なし\n`;
+        context += `原因: 情報なし\n`;
       }
 
       // 対策
       if (jcase.measure && jcase.measure.trim()) {
         const measure = jcase.measure.length > 150 ? jcase.measure.substring(0, 150) + '...' : jcase.measure;
-        context += `   対策: ${measure}\n`;
+        context += `対策: ${measure}\n`;
       } else {
-        context += `   対策: 情報なし\n`;
+        context += `対策: 情報なし\n`;
       }
 
-      context += `   詳細URL: ${jcase.url || '情報なし'}\n\n`;
+      context += `詳細URL: ${jcase.url || '情報なし'}\n\n`;
     });
   } else {
     // General question - only provide measures/countermeasures, NOT disaster details
