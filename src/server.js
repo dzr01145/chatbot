@@ -477,9 +477,18 @@ async function callAI(message, conversationHistory, knowledgeContext, selectedMo
 
   if (AI_PROVIDER === 'google') {
     // Google Gemini API
+    // Set max tokens based on response length
+    const maxOutputTokens = responseLength === 'long' ? 8192 : 2048;
+
     const model = aiClient.getGenerativeModel({
       model: selectedModel,
-      systemInstruction: systemPrompt
+      systemInstruction: systemPrompt,
+      generationConfig: {
+        maxOutputTokens: maxOutputTokens,
+        temperature: 0.7,
+        topP: 0.95,
+        topK: 40
+      }
     });
 
     // Convert conversation history to Gemini format
@@ -488,10 +497,22 @@ async function callAI(message, conversationHistory, knowledgeContext, selectedMo
       parts: [{ text: msg.content }]
     }));
 
-    const chat = model.startChat({ history });
-    const result = await chat.sendMessage(userMessage);
-    const response = await result.response;
-    return response.text();
+    try {
+      const chat = model.startChat({ history });
+      const result = await chat.sendMessage(userMessage);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      console.error('[Gemini API Error]', error);
+      console.error('[Gemini API Error Details]', {
+        model: selectedModel,
+        responseLength: responseLength,
+        maxOutputTokens: maxOutputTokens,
+        errorMessage: error.message,
+        errorStack: error.stack
+      });
+      throw new Error(`Gemini API エラー: ${error.message}`);
+    }
 
   } else if (AI_PROVIDER === 'openai') {
     // OpenAI ChatGPT API
@@ -592,8 +613,15 @@ app.post('/api/chat', async (req, res) => {
     // Combine contexts
     const combinedContext = knowledgeContext + jireiContext + lawsContext;
 
-    // Call AI API with selected model and response length
+    // Log context size for debugging
+    const contextSize = combinedContext.length;
     console.log(`[Chat] Using model: ${model}, Response length: ${responseLength}`);
+    console.log(`[Chat] Context size: ${contextSize} characters`);
+
+    if (contextSize > 30000) {
+      console.warn(`[Chat] Warning: Large context size (${contextSize} chars). This may cause issues with Gemini API.`);
+    }
+
     const reply = await callAI(message, conversationHistory, combinedContext, model, responseLength);
 
     res.json({
@@ -610,10 +638,29 @@ app.post('/api/chat', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Chat error:', error);
+    console.error('[Chat Error]', error);
+    console.error('[Chat Error Stack]', error.stack);
+
+    // Provide user-friendly error messages
+    let userMessage = 'チャット処理中にエラーが発生しました';
+
+    if (error.message.includes('Gemini API')) {
+      userMessage = 'AI応答の生成中にエラーが発生しました。';
+      if (model === 'gemini-2.5-pro' && responseLength === 'long') {
+        userMessage += ' Gemini 2.5 Flashモデルまたは「簡潔」モードをお試しください。';
+      }
+    } else if (error.message.includes('timeout')) {
+      userMessage = 'リクエストがタイムアウトしました。もう一度お試しください。';
+    } else if (error.message.includes('quota') || error.message.includes('rate limit')) {
+      userMessage = 'APIの利用制限に達しました。しばらく待ってから再度お試しください。';
+    }
+
     res.status(500).json({
-      error: 'チャット処理中にエラーが発生しました',
-      details: error.message
+      error: userMessage,
+      details: error.message,
+      suggestion: model === 'gemini-2.5-pro' && responseLength === 'long'
+        ? 'Gemini 2.5 Flashモデルまたは「簡潔」モードの使用をお勧めします。'
+        : null
     });
   }
 });

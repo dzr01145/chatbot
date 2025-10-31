@@ -108,7 +108,19 @@ async function sendMessage() {
 
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error || 'チャット処理中にエラーが発生しました');
+            let errorMessage = errorData.error || 'チャット処理中にエラーが発生しました';
+
+            // Add suggestion if available
+            if (errorData.suggestion) {
+                errorMessage += '\n\n💡 ' + errorData.suggestion;
+            }
+
+            // Add details in development
+            if (errorData.details && window.location.hostname === 'localhost') {
+                console.error('Error details:', errorData.details);
+            }
+
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
@@ -133,7 +145,7 @@ async function sendMessage() {
     } catch (error) {
         console.error('Error:', error);
         removeLoading(loadingId);
-        displayMessage(`エラー: ${error.message}`, 'bot');
+        displayMessage(`❌ ${error.message}`, 'bot');
     } finally {
         sendBtn.disabled = false;
         input.focus();
