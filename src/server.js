@@ -364,7 +364,8 @@ function searchLaws(laws, query) {
   const requestedArticles = extractArticleNumbers(query);
 
   // Check if query specifies a specific law
-  const lawNames = ['労働安全衛生法', '労働安全衛生法施行規則', '労働安全衛生法施行令'];
+  // Order matters: check more specific names first (longer strings first)
+  const lawNames = ['労働安全衛生法施行規則', '労働安全衛生法施行令', '労働安全衛生法'];
   let specifiedLaw = null;
   for (const lawName of lawNames) {
     if (normalizedQuery.includes(lawName.toLowerCase())) {
@@ -397,7 +398,9 @@ function searchLaws(laws, query) {
         // Try converting number to kanji
         if (!isNaN(reqArticle)) {
           const kanjiNum = numberToKanji(parseInt(reqArticle));
-          if (articleNum === `第${kanjiNum}条`) {
+          const expectedPattern = `第${kanjiNum}条`;
+
+          if (articleNum === expectedPattern) {
             relevance += 100; // Exact match
             break;
           }
