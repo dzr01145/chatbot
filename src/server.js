@@ -639,13 +639,13 @@ function getSystemPrompt(responseLength = 'short') {
   return SYSTEM_PROMPT + lengthInstruction;
 }
 
-// Call AI API based on provider
+// Call AI API with retry logic
 async function callAI(message, conversationHistory, knowledgeContext, selectedModel = 'gemini-2.5-flash', responseLength = 'short') {
   const userMessage = message + knowledgeContext;
   const systemPrompt = getSystemPrompt(responseLength);
 
   if (AI_PROVIDER === 'google') {
-    // Google Gemini API
+    // Google Gemini API with retry
     // Set max tokens based on response length
     const maxOutputTokens = responseLength === 'long' ? 8192 : 2048;
 
@@ -666,22 +666,51 @@ async function callAI(message, conversationHistory, knowledgeContext, selectedMo
       parts: [{ text: msg.content }]
     }));
 
-    try {
-      const chat = model.startChat({ history });
-      const result = await chat.sendMessage(userMessage);
-      const response = await result.response;
-      return response.text();
-    } catch (error) {
-      console.error('[Gemini API Error]', error);
-      console.error('[Gemini API Error Details]', {
-        model: selectedModel,
-        responseLength: responseLength,
-        maxOutputTokens: maxOutputTokens,
-        errorMessage: error.message,
-        errorStack: error.stack
-      });
-      throw new Error(`Gemini API エラー: ${error.message}`);
+    // Retry logic for transient errors
+    const maxRetries = 2;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[Gemini API] Attempt ${attempt}/${maxRetries}: model=${selectedModel}, responseLength=${responseLength}`);
+
+        const chat = model.startChat({ history });
+        const result = await chat.sendMessage(userMessage);
+        const response = await result.response;
+        const text = response.text();
+
+        console.log(`[Gemini API] Success on attempt ${attempt}`);
+        return text;
+
+      } catch (error) {
+        lastError = error;
+        console.error(`[Gemini API Error] Attempt ${attempt}/${maxRetries} failed:`, {
+          errorName: error.name,
+          errorMessage: error.message,
+          errorType: typeof error,
+          model: selectedModel,
+          responseLength: responseLength,
+          maxOutputTokens: maxOutputTokens
+        });
+
+        // Log the full error object for debugging
+        if (error.response) {
+          console.error('[Gemini API Error] Response data:', error.response.data);
+          console.error('[Gemini API Error] Response status:', error.response.status);
+        }
+
+        // Don't retry on the last attempt
+        if (attempt < maxRetries) {
+          const waitTime = 1000 * attempt; // Exponential backoff: 1s, 2s
+          console.log(`[Gemini API] Retrying in ${waitTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
     }
+
+    // All retries failed
+    console.error('[Gemini API Error] All retries failed. Last error:', lastError);
+    throw new Error(`Gemini API エラー (${maxRetries}回試行): ${lastError.message}`);
 
   } else if (AI_PROVIDER === 'openai') {
     // OpenAI ChatGPT API
@@ -812,24 +841,36 @@ app.post('/api/chat', async (req, res) => {
 
     // Provide user-friendly error messages
     let userMessage = 'チャット処理中にエラーが発生しました';
+    let suggestion = null;
 
     if (error.message.includes('Gemini API')) {
-      userMessage = 'AI応答の生成中にエラーが発生しました。';
-      if (model === 'gemini-2.5-pro' && responseLength === 'long') {
-        userMessage += ' Gemini 2.5 Flashモデルまたは「簡潔」モードをお試しください。';
+      // Check if it's a retry error
+      if (error.message.includes('回試行')) {
+        userMessage = 'AI応答の生成中に一時的なエラーが発生しました（自動リトライ済み）。';
+        suggestion = 'もう一度送信してください。問題が続く場合は、Gemini 2.5 Flashモデルまたは「簡潔」モードをお試しください。';
+      } else {
+        userMessage = 'AI応答の生成中にエラーが発生しました。';
+        if (model === 'gemini-2.5-pro' && responseLength === 'long') {
+          suggestion = 'Gemini 2.5 Flashモデルまたは「簡潔」モードをお試しください。';
+        } else {
+          suggestion = 'もう一度送信してください。';
+        }
       }
     } else if (error.message.includes('timeout')) {
       userMessage = 'リクエストがタイムアウトしました。もう一度お試しください。';
+      suggestion = '質問を簡潔にするか、「簡潔」モードをお試しください。';
     } else if (error.message.includes('quota') || error.message.includes('rate limit')) {
       userMessage = 'APIの利用制限に達しました。しばらく待ってから再度お試しください。';
+      suggestion = '数分後に再度お試しください。';
+    } else if (error.message.includes('Unexpected token')) {
+      userMessage = '一時的な通信エラーが発生しました。';
+      suggestion = 'もう一度送信してください。（自動リトライ機能により、通常は2回目で成功します）';
     }
 
     res.status(500).json({
       error: userMessage,
       details: error.message,
-      suggestion: model === 'gemini-2.5-pro' && responseLength === 'long'
-        ? 'Gemini 2.5 Flashモデルまたは「簡潔」モードの使用をお勧めします。'
-        : null
+      suggestion: suggestion
     });
   }
 });
