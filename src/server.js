@@ -125,6 +125,7 @@ const SYSTEM_PROMPT = `あなたは労働安全衛生の専門家である労働
 // Knowledge base path
 const KNOWLEDGE_PATH = path.join(__dirname, '../data/knowledge.json');
 const JIREI_JSON_PATH = path.join(__dirname, '../data/jirei.json');
+const LAWS_JSON_PATH = path.join(__dirname, '../data/laws.json');
 
 // Initialize AI clients based on provider
 let aiClient;
@@ -165,6 +166,27 @@ async function loadJireiCases() {
     return jireiCasesCache;
   } catch (error) {
     console.error('Error loading jirei cases:', error);
+    return [];
+  }
+}
+
+// Laws cache
+let lawsCache = null;
+
+// Load laws from JSON
+async function loadLaws() {
+  if (lawsCache) {
+    return lawsCache;
+  }
+
+  try {
+    const data = await fs.readFile(LAWS_JSON_PATH, 'utf8');
+    const lawsData = JSON.parse(data);
+    lawsCache = lawsData.laws;
+    console.log(`✓ ${lawsCache.length}件の法令データを読み込みました (Version: ${lawsData.version})`);
+    return lawsCache;
+  } catch (error) {
+    console.error('Error loading laws:', error);
     return [];
   }
 }
@@ -261,6 +283,71 @@ function searchJireiCases(cases, query) {
 
   // Sort by relevance
   return results.sort((a, b) => b.relevance - a.relevance);
+}
+
+// Search laws
+function searchLaws(laws, query) {
+  const results = [];
+  const queryLower = query.toLowerCase();
+
+  // Common law-related keywords
+  const lawKeywords = ['条', '項', '法', '規則', '令', '施行', '義務', '禁止', '罰則', '届出', '報告'];
+
+  laws.forEach(law => {
+    let relevance = 0;
+
+    // Check title match
+    if (law.title && law.title.toLowerCase().includes(queryLower)) {
+      relevance += 5;
+    }
+
+    // Check content match
+    if (law.content && law.content.toLowerCase().includes(queryLower)) {
+      relevance += 3;
+    }
+
+    // Check chapter match
+    if (law.chapter && law.chapter.toLowerCase().includes(queryLower)) {
+      relevance += 2;
+    }
+
+    // Check article number match
+    if (law.articleNumber && law.articleNumber.toLowerCase().includes(queryLower)) {
+      relevance += 4;
+    }
+
+    // Check tags match
+    if (law.tags && law.tags.some(tag => tag.toLowerCase().includes(queryLower))) {
+      relevance += 2;
+    }
+
+    if (relevance > 0) {
+      results.push({ ...law, relevance });
+    }
+  });
+
+  // Sort by relevance
+  return results.sort((a, b) => b.relevance - a.relevance);
+}
+
+// Format laws for AI context
+function formatLawsContext(laws, userMessage = '') {
+  if (laws.length === 0) {
+    return '';
+  }
+
+  let context = '\n\n【参考法令データベース】\n';
+  context += `※マッチした法令: ${laws.length}件\n`;
+  context += '※以下の法令条文を参考に、正確な法的根拠を示して回答してください。\n\n';
+
+  laws.slice(0, 5).forEach((law, index) => {
+    context += `${index + 1}. 【${law.law}】${law.articleNumber}\n`;
+    context += `   章: ${law.chapter}\n`;
+    const content = law.content.length > 400 ? law.content.substring(0, 400) + '...' : law.content;
+    context += `   内容: ${content}\n\n`;
+  });
+
+  return context;
 }
 
 // Format jirei cases for AI context
@@ -465,8 +552,17 @@ app.post('/api/chat', async (req, res) => {
       console.log(`[Chat] Top 3 jirei titles: ${relevantJirei.slice(0, 3).map(j => j.title).join(' | ')}`);
     }
 
+    // Load and search laws
+    const laws = await loadLaws();
+    const relevantLaws = searchLaws(laws, message);
+    const lawsContext = formatLawsContext(relevantLaws, message);
+    console.log(`[Chat] Laws matched: ${relevantLaws.length} articles`);
+    if (relevantLaws.length > 0) {
+      console.log(`[Chat] Top 3 laws: ${relevantLaws.slice(0, 3).map(l => `${l.law} ${l.articleNumber}`).join(' | ')}`);
+    }
+
     // Combine contexts
-    const combinedContext = knowledgeContext + jireiContext;
+    const combinedContext = knowledgeContext + jireiContext + lawsContext;
 
     // Call AI API
     const reply = await callAI(message, conversationHistory, combinedContext);
@@ -477,6 +573,8 @@ app.post('/api/chat', async (req, res) => {
       knowledgeCount: relevantKnowledge.length,
       jireiUsed: relevantJirei.length > 0,
       jireiCount: relevantJirei.length,
+      lawsUsed: relevantLaws.length > 0,
+      lawsCount: relevantLaws.length,
       provider: AI_PROVIDER
     });
 
