@@ -216,7 +216,8 @@ function extractKeywords(query) {
 
   // Safety-related keywords
   const safetyTerms = ['熱中症', '転倒', '転落', '墜落', '挟まれ', '感電', '火災', '爆発', '中毒',
-    '酸欠', '騒音', '振動', '腰痛', '切創', '骨折', '火傷', '凍傷', '熱傷'];
+    '酸欠', '騒音', '振動', '腰痛', '切創', '骨折', '火傷', 'やけど', '凍傷', '熱傷', '圧死',
+    '巻き込まれ', '激突', '飛来', '崩壊', '倒壊'];
   const locationTerms = ['事務所', 'オフィス', '工場', '倉庫', '建設現場', '工事現場', '階段', '通路'];
   const equipmentTerms = ['機械', '設備', 'フォークリフト', 'クレーン', '高所作業車', 'はしご', '足場', '脚立',
     'コンベア', 'プレス', '電動工具', '移動式クレーン', 'トラック', '玉掛け', 'アウトリガー', 'ジブ',
@@ -497,12 +498,15 @@ function formatLawsContext(laws, userMessage = '') {
 
 // Format jirei cases for AI context
 function formatJireiContext(jireiCases, userMessage = '') {
-  if (jireiCases.length === 0) {
-    return '';
-  }
-
   // Check if user is asking for examples/cases
   const isAskingForExamples = /事例|実例|具体例|ケース|example|case/i.test(userMessage);
+
+  if (jireiCases.length === 0) {
+    if (isAskingForExamples) {
+      return '\n\n【参考事例データベース】\n【重要】該当する災害事例はデータベースに存在しません。\n絶対に架空の事例を作成しないでください。「該当する事例がデータベースにありません」と回答してください。\n';
+    }
+    return '';
+  }
 
   let context = '\n\n【参考事例データベース】\n';
 
