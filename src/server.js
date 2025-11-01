@@ -214,16 +214,30 @@ function extractKeywords(query) {
   // Common keywords to extract for better search
   const keywords = [];
 
-  // Safety-related keywords
-  const safetyTerms = ['熱中症', '転倒', '転落', '墜落', '挟まれ', '感電', '火災', '爆発', '中毒',
+  // Safety-related keywords (disaster types)
+  const safetyTerms = ['熱中症', '転倒', '転落', '墜落', '挟まれ', 'はさまれ', '感電', '火災', '爆発', '中毒',
     '酸欠', '騒音', '振動', '腰痛', '切創', '骨折', '火傷', 'やけど', '凍傷', '熱傷', '圧死',
-    '巻き込まれ', '激突', '飛来', '崩壊', '倒壊'];
-  const locationTerms = ['事務所', 'オフィス', '工場', '倉庫', '建設現場', '工事現場', '階段', '通路'];
-  const equipmentTerms = ['機械', '設備', 'フォークリフト', 'クレーン', '高所作業車', 'はしご', '足場', '脚立',
-    'コンベア', 'プレス', '電動工具', '移動式クレーン', 'トラック', '玉掛け', 'アウトリガー', 'ジブ',
-    '足場板', '手すり', '安全帯', 'ヘルメット', '保護具'];
+    '巻き込まれ', 'まきこまれ', '激突', '飛来', '崩壊', '倒壊', '破裂'];
 
-  const allTerms = [...safetyTerms, ...locationTerms, ...equipmentTerms];
+  // Location keywords
+  const locationTerms = ['事務所', 'オフィス', '工場', '倉庫', '建設現場', '工事現場', '階段', '通路'];
+
+  // Equipment and machinery keywords
+  const equipmentTerms = ['機械', '設備', 'フォークリフト', 'クレーン', '高所作業車', 'はしご', '足場', '脚立',
+    'コンベア', 'ベルトコンベア', 'ベルトコンベヤ', 'プレス', '電動工具', '移動式クレーン', 'トラック', '玉掛け', 'アウトリガー', 'ジブ',
+    '足場板', '手すり', '安全帯', 'ヘルメット', '保護具', 'ボンベ', 'タンク', '配管', '容器',
+    'ショベル', 'ダンプ', 'ローリー', 'プラント', 'ホイスト', 'チェーンブロック'];
+
+  // Substance and material keywords
+  const substanceTerms = ['粉じん', '粉塵', '有機溶剤', '化学物質', 'ガス', '溶剤', '薬品', '劇物', '毒物'];
+
+  // Work type keywords
+  const workTypeTerms = ['切断', '研削', '溶接', '溶断', '塗装', '清掃', '点検', '修理', '組立', '解体', '運搬', '荷役'];
+
+  // Industry keywords
+  const industryTerms = ['建設業', '製造業', '運送', '廃棄物', '廃棄物処理', '荷役', '林業', '農業', '漁業', '鉱業'];
+
+  const allTerms = [...safetyTerms, ...locationTerms, ...equipmentTerms, ...substanceTerms, ...workTypeTerms, ...industryTerms];
 
   // Extract matched terms
   allTerms.forEach(term => {
